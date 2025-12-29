@@ -1,0 +1,3 @@
+[submodule "thirdparty/SongFormer"]
+	path = thirdparty/SongFormer
+	url = https://github.com/ASLP-lab/SongFormer
