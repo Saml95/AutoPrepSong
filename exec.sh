@@ -21,9 +21,9 @@ LRC_SCP=$META_DIR/lrc.scp
 LRCWAV_SCP=$META_DIR/lrc2wav.scp
 
 ### For TEST Purpose Only: Use a small subset of data ###
-head -n 10 $WAV_SCP > $WAV_SCP.tmp
-head -n 10 $LRC_SCP > $LRC_SCP.tmp
-head -n 10 $LRCWAV_SCP > $LRCWAV_SCP.tmp
+head -n 100 $WAV_SCP > $WAV_SCP.tmp
+head -n 100 $LRC_SCP > $LRC_SCP.tmp
+head -n 100 $LRCWAV_SCP > $LRCWAV_SCP.tmp
 WAV_SCP=$WAV_SCP.tmp
 LRC_SCP=$LRC_SCP.tmp
 LRCWAV_SCP=$LRCWAV_SCP.tmp
@@ -80,3 +80,7 @@ python3 scripts/run_separation_new.py \
 
 ### STEP 4: Post-processing and Save Results ###
 python3 scripts/postprocess_combine_all.py $LRCWAV_SCP $SONGFORMER_OUTPUT_DIR $SEPARATION_OUTPUT_DIR $OUTPUT_DIR
+
+ls /mnt/chenyuyang/AutoPrepSongV2/local/final/luoxue_20251226_all/*.json > /mnt/chenyuyang/AutoPrepSongV2/local/luoxue_test_final.scp
+
+python3 vis/vis_struct.py --share

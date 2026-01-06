@@ -272,6 +272,12 @@ def inference(audio_path):
                 msa_infer_output = rule_post_processing(msa_infer_output)
             msa_json = []
             for idx in range(len(msa_infer_output) - 1):
+
+                # combine the same labels CYY
+                if idx > 0 and msa_infer_output[idx][1] == msa_json[-1]["label"]:
+                    msa_json[-1]["end"] = msa_infer_output[idx + 1][0]
+                    continue
+
                 msa_json.append(
                     {
                         "label": msa_infer_output[idx][1],

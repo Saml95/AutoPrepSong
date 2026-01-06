@@ -798,7 +798,7 @@ def main():
     parser.add_argument(
         "--path",
         type=str,
-        default="/data/jianwei/VibeASR/exp/MLC/240s/4o_trans_dia_v1.1/EnglishSPLITAmericanSPLIT0517_007_zero_nonspeech_mp3_chunk-0_max_240.json",
+        default="local/luoxue_test_final.scp",
         help="Default path (JSON file, list file, or directory)"
     )
     parser.add_argument(
