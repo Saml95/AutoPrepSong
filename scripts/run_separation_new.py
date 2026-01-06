@@ -3,6 +3,7 @@
 __author__ = 'Roman Solovyev (ZFTurbo): https://github.com/ZFTurbo/'
 
 import time
+from typing import Union, Dict
 import librosa
 import sys
 import os
@@ -12,13 +13,14 @@ import soundfile as sf
 import numpy as np
 from tqdm.auto import tqdm
 import torch.nn as nn
+import argparse
 
 # Using the embedded version of Python can also correctly import the utils module.
 current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(current_dir, 'thirdparty/music_Source_Separation_Training'))
 
 from utils.audio_utils import normalize_audio, denormalize_audio, draw_spectrogram
-from utils.settings import get_model_from_config, parse_args_inference
+from utils.settings import get_model_from_config, validate_sndfile_subtype
 from utils.model_utils import demix
 from utils.model_utils import prefer_target_instrument, apply_tta, load_start_checkpoint
 
@@ -72,7 +74,7 @@ def process(path):
         if 'instrumental' not in instruments:
             instruments.append('instrumental')
 
-    file_name = os.path.splitext(os.path.basename(path))[0]
+    file_name = os.path.basename(path)# 保留后缀
 
     for instr in instruments:
         estimates = waveforms_orig[instr]
@@ -104,6 +106,61 @@ def process(path):
             draw_spectrogram(estimates.T, sr, args.draw_spectro, output_img_path)
             print("Wrote file:", output_img_path)
 
+
+
+def parse_args_inference(dict_args: Union[Dict, None]) -> argparse.Namespace:
+    """
+    Parse command-line arguments for inference configuration.
+
+    Builds the CLI for model selection, configuration path, input/output handling,
+    device/runtime options, test-time augmentation, and optional LoRA checkpoints.
+    If `dict_args` is provided, its key–value pairs override or supply CLI options
+    programmatically; otherwise, arguments are read from `sys.argv`.
+
+    Args:
+        dict_args (Union[Dict, None]): Optional mapping of argument names to values
+            used to override or supply CLI options programmatically.
+
+    Returns:
+        argparse.Namespace: Parsed arguments namespace containing all inference
+        configuration values.
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model_type", type=str, default='mdx23c',
+                        help="One of bandit, bandit_v2, bs_roformer, htdemucs, mdx23c, mel_band_roformer,"
+                             " scnet, scnet_unofficial, segm_models, swin_upernet, torchseg")
+    parser.add_argument("--config_path", type=str, help="path to config file")
+    parser.add_argument("--start_check_point", type=str, default='', help="Initial checkpoint to valid weights")
+    parser.add_argument("--input_folder", type=str, help="folder with mixtures to process")
+    parser.add_argument("--store_dir", type=str, default="", help="path to store results as wav file")
+    parser.add_argument("--draw_spectro", type=float, default=0,
+                        help="Code will generate spectrograms for resulted stems."
+                             " Value defines for how many seconds os track spectrogram will be generated.")
+    parser.add_argument("--device_ids", nargs='+', type=int, default=0, help='list of gpu ids')
+    parser.add_argument("--extract_instrumental", action='store_true',
+                        help="invert vocals to get instrumental if provided")
+    parser.add_argument("--disable_detailed_pbar", action='store_true', help="disable detailed progress bar")
+    parser.add_argument("--force_cpu", action='store_true', help="Force the use of CPU even if CUDA is available")
+    parser.add_argument("--flac_file", action='store_true', help="Output flac file instead of wav")
+    parser.add_argument("--pcm_type", type=str, choices=['PCM_16', 'PCM_24', 'FLOAT'], default='FLOAT',
+                        help="PCM type for FLAC files (PCM_16 or PCM_24)")
+    parser.add_argument("--use_tta", action='store_true',
+                        help="Flag adds test time augmentation during inference (polarity and channel inverse)."
+                        "While this triples the runtime, it reduces noise and slightly improves prediction quality.")
+    parser.add_argument("--lora_checkpoint_peft", type=str, default='', help="Initial checkpoint to LoRA weights")
+    parser.add_argument("--filename_template", type=str, default='{file_name}/{instr}',
+                        help="Output filename template, without extension, using '/' for subdirectories. Default: '{file_name}/{instr}'")
+    parser.add_argument("--lora_checkpoint_loralib", type=str, default='', help="Initial checkpoint to LoRA weights")
+    if dict_args is not None:
+        args = parser.parse_args([])
+        args_dict = vars(args)
+        args_dict.update(dict_args)
+        args = argparse.Namespace(**args_dict)
+    else:
+        args = parser.parse_args()
+    args.pcm_type = validate_sndfile_subtype(args)
+
+    return args
 
 ########################
 

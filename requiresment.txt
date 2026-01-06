@@ -91,3 +91,4 @@ loralib
 ml_collections
 pytorch_optimizer
 rotary_embedding_torch
+torchcodec

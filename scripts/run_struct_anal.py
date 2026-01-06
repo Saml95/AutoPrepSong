@@ -279,9 +279,10 @@ def inference(audio_path):
                         "end": msa_infer_output[idx + 1][0],
                     }
                 )
+            
             json.dump(
                 msa_json,
-                open(os.path.join(init_args.output_dir, f"{Path(item).stem}.json"), "w"),
+                open(os.path.join(init_args.output_dir, f"{Path(item).name}.json"), "w"),
                 indent=4,
                 ensure_ascii=False,
             )
