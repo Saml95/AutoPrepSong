@@ -216,4 +216,7 @@ else:
     detailed_pbar = True
 
 for path in mixture_paths:
+    if os.path.exists(os.path.join(args.store_dir, os.path.basename(path))):
+        print(f"File {os.path.join(args.store_dir, os.path.basename(path))} exists, skipping...")
+        continue
     process(path)

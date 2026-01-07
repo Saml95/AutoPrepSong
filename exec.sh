@@ -3,10 +3,11 @@ META_DIR=local/luoxue_20251226_all
 # $SEP_MODEL=bs_roformer
 SONGFORMER_OUTPUT_DIR=local/songformer_output/luoxue_20251226_all
 SEPARATION_OUTPUT_DIR=local/separation_output/bs_roformer/luoxue_20251226_all
+VAD_OUTPUT_DIR=local/vad_output/luoxue_20251226_all
 OUTPUT_DIR=local/final/luoxue_20251226_all
 
 
-git submodule update --init --recursive
+# git submodule update --init --recursive
 
 # pip uninstall flash-attn # requirement自动装的flash-atn会有适配问题，推荐自己按照环境去找编译好的版本装
 
@@ -78,8 +79,12 @@ python3 scripts/run_separation_new.py \
     --store_dir $SEPARATION_OUTPUT_DIR
 
 
-### STEP 4: Post-processing and Save Results ###
-python3 scripts/postprocess_combine_all.py $LRCWAV_SCP $SONGFORMER_OUTPUT_DIR $SEPARATION_OUTPUT_DIR $OUTPUT_DIR
+### STEP 4: Sentence VAD ###
+
+python3 scripts/run_sentence_vad.py $LRCWAV_SCP $SEPARATION_OUTPUT_DIR $VAD_OUTPUT_DIR
+
+### STEP 5: Post-processing and Save Results ###
+python3 scripts/postprocess_combine_all.py $LRCWAV_SCP $SONGFORMER_OUTPUT_DIR $SEPARATION_OUTPUT_DIR $VAD_OUTPUT_DIR $OUTPUT_DIR
 
 ls /mnt/chenyuyang/AutoPrepSongV2/local/final/luoxue_20251226_all/*.json > /mnt/chenyuyang/AutoPrepSongV2/local/luoxue_test_final.scp
 
