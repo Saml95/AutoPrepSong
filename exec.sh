@@ -7,13 +7,13 @@ VAD_OUTPUT_DIR=local/vad_output/luoxue_20251226_all
 OUTPUT_DIR=local/final/luoxue_20251226_all
 
 
-# git submodule update --init --recursive
+git submodule update --init --recursive
 
 # pip uninstall flash-attn # requirement自动装的flash-atn会有适配问题，推荐自己按照环境去找编译好的版本装
 
 
 
-### STEP 1: Prepare Metadata and Features ###
+## STEP 1: Prepare Metadata and Features ###
 python3 scripts/preprocess_scp.py $INPUT_SCP $META_DIR
 
 
@@ -21,13 +21,13 @@ WAV_SCP=$META_DIR/wav.scp
 LRC_SCP=$META_DIR/lrc.scp
 LRCWAV_SCP=$META_DIR/lrc2wav.scp
 
-### For TEST Purpose Only: Use a small subset of data ###
-head -n 100 $WAV_SCP > $WAV_SCP.tmp
-head -n 100 $LRC_SCP > $LRC_SCP.tmp
-head -n 100 $LRCWAV_SCP > $LRCWAV_SCP.tmp
-WAV_SCP=$WAV_SCP.tmp
-LRC_SCP=$LRC_SCP.tmp
-LRCWAV_SCP=$LRCWAV_SCP.tmp
+# ### For TEST Purpose Only: Use a small subset of data ###
+# head -n 100 $WAV_SCP > $WAV_SCP.tmp
+# head -n 100 $LRC_SCP > $LRC_SCP.tmp
+# head -n 100 $LRCWAV_SCP > $LRCWAV_SCP.tmp
+# WAV_SCP=$WAV_SCP.tmp
+# LRC_SCP=$LRC_SCP.tmp
+# LRCWAV_SCP=$LRCWAV_SCP.tmp
 
 
 
@@ -88,4 +88,4 @@ python3 scripts/postprocess_combine_all.py $LRCWAV_SCP $SONGFORMER_OUTPUT_DIR $S
 
 ls /mnt/chenyuyang/AutoPrepSongV2/local/final/luoxue_20251226_all/*.json > /mnt/chenyuyang/AutoPrepSongV2/local/luoxue_test_final.scp
 
-python3 vis/vis_struct.py --share
+# python3 vis/vis_struct.py --share

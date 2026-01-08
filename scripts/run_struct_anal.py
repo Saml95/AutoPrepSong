@@ -118,7 +118,7 @@ def rule_post_processing(msa_list):
     return result
 
 @torch.no_grad()
-def inference(audio_path):
+def process(audio_path):
     """Run inference on the input audio"""
     num_classes = init_args.num_classes
 
@@ -393,7 +393,7 @@ for key, allowed_ids in DATASET_ID_ALLOWED_LABEL_IDS.items():
     dataset_id2label_mask[key][allowed_ids] = False
 
 for item in processing_ids:
-    inference(item)
+    process(item)
 
 
 

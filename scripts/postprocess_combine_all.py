@@ -13,22 +13,50 @@ if __name__=='__main__':
         lrc_path, wav_path = line.split('\t')
         basename = Path(wav_path).name
         struct_json = json.load(open(struct_dir / f"{basename}.json", 'r', encoding='utf-8'))
-
+        total_len = AudioDecoder(wav_path).metadata.duration_seconds
 
         segments, extra, wrong_t = [], [], []
         vad_json = json.load(open(vad_dir / f"{basename}.json", 'r', encoding='utf-8'))
 
-        struct_ptr, max_sec = 0, 0
+        max_sec, filtered_vad_json = 0, []
         for seg in vad_json:
-            if seg['end'] == seg['start']:
+            # print(seg)
+            # if seg['text'] == "At least just say": breakpoint()
+            if seg['end'] - seg['start'] < 0.2:
                 extra.append(seg)
                 continue
             if seg['start'] < max_sec-1: # allow 1 sec mistake due to precision
                 wrong_t.append(seg)
-                continue
+                break
+            
+
+            if seg['start'] - max_sec >= 1.5:
+                filtered_vad_json.append({
+                    "text": "",
+                    "start": max_sec,
+                    "end": seg['start'],
+                })
+            elif filtered_vad_json!= []:
+                # merge with previous segment
+                filtered_vad_json[-1]['end'] = seg['start']
+            
+
             max_sec = seg['end']
+            filtered_vad_json.append(seg.copy())
+
+        if total_len - max_sec >= 1.5:
+            filtered_vad_json.append({
+                "text": "",
+                "start": max_sec,
+                "end": total_len,
+            })
+        elif filtered_vad_json!= []:
+            filtered_vad_json[-1]['end'] = total_len
 
 
+
+        struct_ptr = 0
+        for seg in filtered_vad_json:
             while seg['start'] >= struct_json[struct_ptr]['end']:
                 struct_ptr += 1
                 if struct_ptr >= len(struct_json):
@@ -53,7 +81,7 @@ if __name__=='__main__':
 
         output_json = {
             "audio_path": wav_path,
-            "audio_length": AudioDecoder(wav_path).metadata.duration_seconds,
+            "audio_length": total_len,
             "audio_vocal_path": str(sep_dir / basename / "vocals"),
             "audio_bgm_path": str(sep_dir / basename / "instrumental"),
             "structures": struct_json,
