@@ -1,11 +1,7 @@
 ## Set up environment
 
 ```
-pip install -r requirement.txt
-
-apt-get install ffmpeg
-
-pip uninstall flash-attn
+bash prepare.sh
 ```
 
 ## RUN
@@ -13,6 +9,16 @@ pip uninstall flash-attn
 ```
 bash exec.sh
 ```
+
+或者
+
+```
+python3 scripts/autoprep_song.py cfg_file=config/prep_luoxue.yaml
+```
+
+
+
+
 
 INPUT_SCP: 格式参照/mnt/conversationhubhot/yaoyaochang/speech/data/music/yan/luoxue_20251226_all.scp
 

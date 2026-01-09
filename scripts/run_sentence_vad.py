@@ -124,7 +124,7 @@ def parse_lrc_with_timestamps(lrc_path):
     return results
 
 
-def process(audio_path, lyric_path):
+def process(audio_path, lyric_path, vad_kwargs={}):
     lyric_starts = parse_lrc_with_timestamps(lyric_path)
 
     audio, sr = librosa.load(audio_path, sr=None, mono=True)
@@ -135,7 +135,7 @@ def process(audio_path, lyric_path):
         start_frame = int(lyric_starts[i]['start'] * sr)
         end_frame = int(lyric_starts[i+1]['start'] * sr) if i+1 < len(lyric_starts) else audio.shape[0]
         segment_audio = audio[...,start_frame:end_frame]
-        vad_start , vad_end , vad_mask = energy_vad_from_start(segment_audio, sr)
+        vad_start , vad_end , vad_mask = energy_vad_from_start(segment_audio, sr, **vad_kwargs)
         # print(vad_start+lyric_starts[i]['start'], vad_end+lyric_starts[i]['start'], lyric_starts[i])
 
         result.append({

@@ -3,11 +3,6 @@ import sys
 
 
 
-ALL_SCP = ""# "/mnt/conversationhubhot/yaoyaochang/speech/data/music/yan/luoxue_20251226_all.scp"
-OUTPUT_SCP = "" #Path('local/luoxue_20251226_all/lrc2wav.scp')
-
-
-
 
 def load_and_category(scp_path: str, output_dir: str):
     output_dir = Path(output_dir)

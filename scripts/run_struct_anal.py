@@ -118,7 +118,7 @@ def rule_post_processing(msa_list):
     return result
 
 @torch.no_grad()
-def process(audio_path):
+def process(audio_path, device, init_args, muq, musicfm, model, hp, dataset_id2label_mask):
     """Run inference on the input audio"""
     num_classes = init_args.num_classes
 
@@ -298,102 +298,101 @@ def process(audio_path):
 
 
 
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
 
-parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--input_path", "-i", type=str, required=True, help="Input file path"
+    )
+    parser.add_argument(
+        "--output_path", "-o", type=str, required=True, help="Output file path"
+    )
+    parser.add_argument(
+        "--gpu_num", "-gn", type=int, default=1, help="Number of GPUs, default is 1"
+    )
+    parser.add_argument(
+        "--num_thread_per_gpu",
+        "-tn",
+        type=int,
+        default=1,
+        help="Number of threads per GPU, default is 1",
+    )
+    parser.add_argument("--model", type=str, help="Model to use")
+    parser.add_argument("--checkpoint", type=str, help="Checkpoint path")
+    parser.add_argument("--config_path", type=str, help="Configuration file path")
+    parser.add_argument(
+        "--no_rule_post_processing",
+        action="store_true",
+        help="Disable rule-based post-processing",
+    )
+    parser.add_argument("--debug", action="store_true", help="Enable debug mode")
 
-parser.add_argument(
-    "--input_path", "-i", type=str, required=True, help="Input file path"
-)
-parser.add_argument(
-    "--output_path", "-o", type=str, required=True, help="Output file path"
-)
-parser.add_argument(
-    "--gpu_num", "-gn", type=int, default=1, help="Number of GPUs, default is 1"
-)
-parser.add_argument(
-    "--num_thread_per_gpu",
-    "-tn",
-    type=int,
-    default=1,
-    help="Number of threads per GPU, default is 1",
-)
-parser.add_argument("--model", type=str, help="Model to use")
-parser.add_argument("--checkpoint", type=str, help="Checkpoint path")
-parser.add_argument("--config_path", type=str, help="Configuration file path")
-parser.add_argument(
-    "--no_rule_post_processing",
-    action="store_true",
-    help="Disable rule-based post-processing",
-)
-parser.add_argument("--debug", action="store_true", help="Enable debug mode")
-
-args = parser.parse_args()
-
-
-input_path = args.input_path
-output_path = args.output_path
-
-os.makedirs(output_path, exist_ok=True)
-
-processed_ids = get_processed_ids(output_path=output_path)
-processing_ids = get_processing_ids(input_path, processed_ids)
-init_args = Namespace(
-    output_dir=output_path,
-    win_size=420,
-    hop_size=420,
-    num_classes=128,
-    model=args.model,
-    checkpoint=args.checkpoint,
-    config_path=args.config_path,
-    no_rule_post_processing=args.no_rule_post_processing,
-)
-
-processes = []
+    args = parser.parse_args()
 
 
-device = f"cuda:0" if torch.cuda.is_available() else "cpu"
+    input_path = args.input_path
+    output_path = args.output_path
 
-# MuQ model loading (this will automatically fetch the checkpoint from huggingface)
-muq = MuQ.from_pretrained("OpenMuQ/MuQ-large-msd-iter")
-muq = muq.to(device).eval()
+    os.makedirs(output_path, exist_ok=True)
 
-# MusicFM model loading
-musicfm = MusicFM25Hz(
-    is_flash=False,
-    stat_path=os.path.join(MUSICFM_HOME_PATH, "msd_stats.json"),
-    model_path=os.path.join(MUSICFM_HOME_PATH, "pretrained_msd.pt"),
-)
-musicfm = musicfm.to(device)
-musicfm.eval()
+    processed_ids = get_processed_ids(output_path=output_path)
+    processing_ids = get_processing_ids(input_path, processed_ids)
+    init_args = Namespace(
+        output_dir=output_path,
+        win_size=420,
+        hop_size=420,
+        num_classes=128,
+        model=args.model,
+        checkpoint=args.checkpoint,
+        config_path=args.config_path,
+        no_rule_post_processing=args.no_rule_post_processing,
+    )
 
-# Custom model loading based on the config
-module = importlib.import_module("models." + str(init_args.model))
-Model = getattr(module, "Model")
-hp = OmegaConf.load(os.path.join(BASE_PATH, "configs", init_args.config_path))
-model = Model(hp)
+    processes = []
 
-ckpt = load_checkpoint(checkpoint_path=os.path.join(BASE_PATH, "ckpts", init_args.checkpoint))
-if ckpt.get("model_ema", None) is not None:
-    logger.info("Loading EMA model parameters")
-    model_ema = EMA(model, include_online_model=False)
-    model_ema.load_state_dict(ckpt["model_ema"])
-    model.load_state_dict(model_ema.ema_model.state_dict())
-else:
-    logger.info("No EMA model parameters found, using original model")
-    model.load_state_dict(ckpt["model"])
 
-model.to(device)
-model.eval()
+    device = f"cuda:0" if torch.cuda.is_available() else "cpu"
 
-    
-dataset_id2label_mask = {}
+    # MuQ model loading (this will automatically fetch the checkpoint from huggingface)
+    muq = MuQ.from_pretrained("OpenMuQ/MuQ-large-msd-iter")
+    muq = muq.to(device).eval()
 
-for key, allowed_ids in DATASET_ID_ALLOWED_LABEL_IDS.items():
-    dataset_id2label_mask[key] = np.ones(init_args.num_classes, dtype=bool)
-    dataset_id2label_mask[key][allowed_ids] = False
+    # MusicFM model loading
+    musicfm = MusicFM25Hz(
+        is_flash=False,
+        stat_path=os.path.join(MUSICFM_HOME_PATH, "msd_stats.json"),
+        model_path=os.path.join(MUSICFM_HOME_PATH, "pretrained_msd.pt"),
+    )
+    musicfm = musicfm.to(device)
+    musicfm.eval()
 
-for item in processing_ids:
-    process(item)
+    # Custom model loading based on the config
+    module = importlib.import_module("models." + str(init_args.model))
+    Model = getattr(module, "Model")
+    hp = OmegaConf.load(os.path.join(BASE_PATH, "configs", init_args.config_path))
+    model = Model(hp)
+
+    ckpt = load_checkpoint(checkpoint_path=os.path.join(BASE_PATH, "ckpts", init_args.checkpoint))
+    if ckpt.get("model_ema", None) is not None:
+        logger.info("Loading EMA model parameters")
+        model_ema = EMA(model, include_online_model=False)
+        model_ema.load_state_dict(ckpt["model_ema"])
+        model.load_state_dict(model_ema.ema_model.state_dict())
+    else:
+        logger.info("No EMA model parameters found, using original model")
+        model.load_state_dict(ckpt["model"])
+
+    model.to(device)
+    model.eval()
+
+        
+    dataset_id2label_mask = {}
+    for key, allowed_ids in DATASET_ID_ALLOWED_LABEL_IDS.items():
+        dataset_id2label_mask[key] = np.ones(init_args.num_classes, dtype=bool)
+        dataset_id2label_mask[key][allowed_ids] = False
+
+    for item in processing_ids:
+        process(item, device, init_args, muq, musicfm, model, hp, dataset_id2label_mask)
 
 
 

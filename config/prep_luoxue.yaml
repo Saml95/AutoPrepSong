@@ -1,0 +1,19 @@
+input_scp: /mnt/chenyuyang/AutoPrepSongV2/local/pipe2/test.scp
+intermediate_scp_dir: /mnt/chenyuyang/AutoPrepSongV2/local/pipe2
+output_dir: /mnt/chenyuyang/AutoPrepSongV2/local/pipe2/final_output
+
+songformer_init_args:
+  model: SongFormer
+  checkpoint: SongFormer.safetensors
+  config_path: SongFormer.yaml
+  output_dir: ${intermediate_scp_dir}/songformer_output
+
+separator_init_args:
+  model_type: bs_roformer
+  config_path: thirdparty/music_Source_Separation_Training/configs/viperx/model_bs_roformer_ep_317_sdr_12.9755.yaml
+  start_check_point: thirdparty/music_Source_Separation_Training/ckpts/model_bs_roformer_ep_317_sdr_12.9755.ckpt
+  extract_instrumental: true
+  store_dir: ${intermediate_scp_dir}/separation_output
+
+vad_init_args:
+  output_dir: ${intermediate_scp_dir}/vad_output
