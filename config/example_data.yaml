@@ -1,0 +1,3 @@
+
+input_jsonl: example/test.jsonl
+output_base_dir: exp/example

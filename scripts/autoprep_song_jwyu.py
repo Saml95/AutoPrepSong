@@ -1,5 +1,6 @@
 import math
 import os, sys
+import argparse
 from pathlib import Path
 import json
 from typing import Optional
@@ -91,11 +92,16 @@ class AutoPrepSong:
         
         # Resume option: skip if output already exists
         self.resume = self.config.get("resume", True)
+        
+        # Get start_idx and chunk_size from config
+        self.start_idx = self.config.get("start_idx", 0)
+        self.chunk_size = self.config.get("chunk_size", None)
 
         # Load audio-lyric pairs from jsonl file
         if self.input_jsonl is not None:
-            self.audio_lyric_pairs = self.load_jsonl()
-            print(f"Loaded {len(self.audio_lyric_pairs)} audio-lyric pairs from {self.input_jsonl}.")
+            self.audio_lyric_pairs = self.load_jsonl(start_idx=self.start_idx, chunk_size=self.chunk_size)
+            chunk_info = f"start_idx={self.start_idx}, chunk_size={self.chunk_size}" if self.chunk_size else f"start_idx={self.start_idx}, all remaining"
+            print(f"Loaded {len(self.audio_lyric_pairs)} audio-lyric pairs from {self.input_jsonl} ({chunk_info}).")
         else:
             self.audio_lyric_pairs = []
 
@@ -119,19 +125,37 @@ class AutoPrepSong:
         if self.do_vad and self.config.get("vad_init_args") is not None:
             self.vad_init_args = OmegaConf.merge(VADConfig, self.config.vad_init_args)
 
-    def load_jsonl(self):
+    def load_jsonl(self, start_idx: int = 0, chunk_size: int = None):
         """Load audio-lyric pairs from jsonl file.
         
         Each line in the jsonl file should be a JSON object with keys:
         - audio_path: path to the audio file
         - lyric_path: path to the lyric file
+        
+        Args:
+            start_idx: Starting index (0-based) for processing. Default is 0.
+            chunk_size: Number of lines to process from start_idx. 
+                        If None, process all lines from start_idx to the end.
         """
         pairs = []
+        line_idx = 0
+        end_idx = start_idx + chunk_size if chunk_size is not None else float('inf')
+        
         with open(self.input_jsonl, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line:
                     continue
+                
+                # Skip lines before start_idx
+                if line_idx < start_idx:
+                    line_idx += 1
+                    continue
+                
+                # Stop if we've reached the end of the chunk
+                if line_idx >= end_idx:
+                    break
+                
                 try:
                     record = json.loads(line)
                     audio_path = record.get("audio_path")
@@ -142,6 +166,8 @@ class AutoPrepSong:
                         print(f"[Warning] Missing audio_path or lyric_path: {line}")
                 except json.JSONDecodeError as e:
                     print(f"[Warning] Invalid JSON line: {line}, error: {e}")
+                
+                line_idx += 1
         return pairs
 
 
@@ -628,22 +654,102 @@ class AutoPrepSong:
                   ensure_ascii=False, indent=4)
 
 
-def load_config() -> DictConfig:
-    cmd_cfg = OmegaConf.from_cli()
+def parse_args():
+    parser = argparse.ArgumentParser(description="AutoPrepSong: Audio preprocessing pipeline for song data")
+    parser.add_argument(
+        "--config_path", "-c",
+        type=str,
+        default=None,
+        help="Path to the configuration YAML file"
+    )
+    parser.add_argument(
+        "--data_yaml", "-d",
+        type=str,
+        default=None,
+        help="Path to a YAML file containing 'input_jsonl' and 'output_base_dir' keys. "
+             "Alternative to providing --input_jsonl and --output_base_dir directly."
+    )
+    parser.add_argument(
+        "--input_jsonl", "-i",
+        type=str,
+        default=None,
+        help="Path to the input JSONL file containing audio-lyric pairs"
+    )
+    parser.add_argument(
+        "--output_base_dir", "-o",
+        type=str,
+        default=None,
+        help="Base directory for all output files"
+    )
+    parser.add_argument(
+        "--start_idx", "-s",
+        type=int,
+        default=0,
+        help="Starting index (0-based) for processing JSONL lines (default: 0)"
+    )
+    parser.add_argument(
+        "--chunk_size", "-n",
+        type=int,
+        default=None,
+        help="Number of lines to process from start_idx. If not specified, process all remaining lines"
+    )
+    return parser.parse_args()
+
+
+def load_config(args) -> dict:
+    # Load config from file if provided
+    if args.config_path is not None:
+        file_cfg = OmegaConf.load(open(args.config_path, 'r'))
+    else:
+        file_cfg = OmegaConf.create()
     
-    cfg_file_path = cmd_cfg.pop("cfg_file", None) 
-    file_cfg = OmegaConf.load(open(cfg_file_path, 'r')) if cfg_file_path is not None \
-                else OmegaConf.create()
+    # Validate: cannot pass both --input_jsonl/--output_base_dir and --data_yaml
+    has_direct_args = args.input_jsonl is not None or args.output_base_dir is not None
+    has_data_yaml = args.data_yaml is not None
     
-    cfgs = OmegaConf.merge(file_cfg, cmd_cfg)
+    if has_direct_args and has_data_yaml:
+        raise ValueError(
+            "Cannot use both --data_yaml and --input_jsonl/--output_base_dir simultaneously. "
+            "Choose one method: either provide --data_yaml OR --input_jsonl and --output_base_dir."
+        )
+    
+    # Determine input_jsonl and output_base_dir
+    if has_data_yaml:
+        # Load from data_yaml
+        data_cfg = OmegaConf.load(open(args.data_yaml, 'r'))
+        input_jsonl = data_cfg.get("input_jsonl", None)
+        output_base_dir = data_cfg.get("output_base_dir", None)
+    else:
+        # Use direct args
+        input_jsonl = args.input_jsonl
+        output_base_dir = args.output_base_dir
+    
+    # Validate that we have the required parameters
+    if input_jsonl is None:
+        raise ValueError("input_jsonl is required. Provide via --input_jsonl or --data_yaml")
+    if output_base_dir is None:
+        raise ValueError("output_base_dir is required. Provide via --output_base_dir or --data_yaml")
+    
+    # Create config from command line args
+    cli_cfg = OmegaConf.create({
+        "input_jsonl": input_jsonl,
+        "output_base_dir": output_base_dir,
+        "start_idx": args.start_idx,
+        "chunk_size": args.chunk_size,
+    })
+    
+    # Merge configs (CLI args override file config)
+    cfgs = OmegaConf.merge(file_cfg, cli_cfg)
     OmegaConf.resolve(cfgs)
     
     cfgs = OmegaConf.to_container(cfgs, resolve=True)
 
     return cfgs
 
+
 if __name__ == "__main__":
-    cfg = load_config()
+    args = parse_args()
+    cfg = load_config(args)
 
     autoprep = AutoPrepSong(config=cfg)
     autoprep.process_all()

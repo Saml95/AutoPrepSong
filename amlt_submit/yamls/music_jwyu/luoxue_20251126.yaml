@@ -1,0 +1,63 @@
+description: AutoPrepSongV2
+
+target:
+  service: sing
+  # name: msrresrchlabbasic
+  name: msrresrchbasicvc
+  workspace_name: workspace_genai
+  
+environment:
+  image: pytorch:24.10-py3
+  registry: workspacegenaiacr.azurecr.io
+  setup:
+  - sudo chmod -R 777 /opt/conda/envs/ptca/lib/python3.10/site-packages
+  - sudo apt update ; sudo apt-get install -y ffmpeg 
+  - pip install -r requirements.txt 
+  - pip uninstall flash-attn -y
+
+code:
+  local_dir: $CONFIG_DIR/../../../
+  
+storage:
+  conversationhub:
+    storage_account_name: conversationhub
+    container_name: unilm
+  conversationhubhot:
+    storage_account_name: conversationhubhot
+    container_name: unilm
+
+search:
+  job_template:
+    name: data_preprocessing_{start_idx}
+    sku: 40G1-A100
+    # sla_tier: Premium
+    # sla_tier: Standard
+    sla_tier: Standard
+    priority: High
+    identity: managed
+    process_count_per_node: 1
+    command:
+      # - sleep infinity
+      - python3 scripts/autoprep_song_jwyu.py
+        --config_path config/amlt_basic.yaml
+        --data_yaml amlt_submit/data/luoxue_20251226.yaml
+        --start_idx {start_idx}
+        --chunk_size {chunk_size}
+    tags: [Project_Name:Speech, Experiment:Speech_Processing]
+    submit_args:
+      env:
+        NCCL_DEBUG: INFO
+        MKL_NUM_THREADS: 1
+        OMP_NUM_THREADS: 1
+        MKL_SERVICE_FORCE_INTEL: 1
+  type: grid
+  max_trials: 64
+  params:
+    - name: start_idx
+      spec: discrete
+      values: range(000_000, 9245, 145)
+    - name: chunk_size
+      spec: discrete
+      values: [
+        145
+      ]
