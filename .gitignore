@@ -212,3 +212,4 @@ __marimo__/
 
 # remove ckpts
 ckpts/
+exp/

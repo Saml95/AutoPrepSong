@@ -1,0 +1,66 @@
+description: audio data processing
+target:
+  service: sing
+  name: palisades04 
+  workspace_name: Workspace_NLC@DNN
+  
+environment:
+  image: amlt-sing/acpt-torch2.5.0-py3.10-cuda12.1-ubuntu22.0
+  setup:
+    - sudo chmod -R 777 /opt/conda/envs/ptca/lib/python3.10/site-packages
+    - sudo apt update ; sudo apt-get install -y ffmpeg 
+    - export PATH=$$PATH:/home/aiscuser/.local/bin
+    - pip install -r requirements.txt --user
+    - sudo apt install ffmpeg
+
+code:
+  local_dir: $CONFIG_DIR/../../../
+  ignore:
+  - output/*
+  
+storage:
+  conversationhub:
+    storage_account_name: conversationhub
+    container_name: unilm
+  conversationhubhot:
+    storage_account_name: conversationhubhot
+    container_name: unilm
+
+search:
+  job_template:
+    name: data_preprocessing_{start_idx}
+    sku: 40G1-A100
+    # sla_tier: Premium
+    # sla_tier: Standard
+    priority: High
+    identity: managed
+    process_count_per_node: 1
+    command:
+      # - sleep infinity
+      - cd gcrsubmit
+      - bash multiple_gpu_multiple_process.sh 
+        --index_file /mnt/conversationhubhot/yaoyaochang/speech/data/gemini/sft_20250628_wav.scp
+        --start_idx {start_idx}
+        --total_files {step}
+        --num_gpus 1
+        --processes_per_gpu 2
+        --buffer_size 20
+        --output_dir /mnt/conversationhubhot/yaoyaochang/speech/data/gemini/AutoPrepV2_results_noenhance
+    tags: [Project_Name:Speech, Experiment:Speech_Processing]
+    submit_args:
+      env:
+        NCCL_DEBUG: INFO
+        MKL_NUM_THREADS: 1
+        OMP_NUM_THREADS: 1
+        MKL_SERVICE_FORCE_INTEL: 1
+  type: grid
+  max_trials: 32
+  params:
+    - name: start_idx
+      spec: discrete
+      values: range(000_000, 2_400, 75)
+    - name: step
+      spec: discrete
+      values: [
+        75
+      ]
