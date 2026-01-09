@@ -1,12 +1,14 @@
-input_scp: /mnt/chenyuyang/AutoPrepSongV2/local/pipe2/test.scp
-intermediate_scp_dir: /mnt/chenyuyang/AutoPrepSongV2/local/pipe2
-output_dir: /mnt/chenyuyang/AutoPrepSongV2/local/pipe2/final_output
+input_scp: local/pipe2/test.scp
+intermediate_scp_dir: local/pipe2
+output_dir: local/pipe2/final_output
 
 songformer_init_args:
   model: SongFormer
-  checkpoint: SongFormer.safetensors
   config_path: SongFormer.yaml
   output_dir: ${intermediate_scp_dir}/songformer_output
+  CHECKPOINT_PATH: ckpts/SongFormer.safetensors
+  MUSICFM_HOME_PATH: ckpts/MusicFM
+  MUQ_PATH: ckpts/MuQ-large-msd-iter
 
 separator_init_args:
   model_type: bs_roformer

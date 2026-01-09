@@ -1,4 +1,4 @@
-pip install -r requirements.txt
+pip install -r requirements.txt #--use-deprecated=legacy-resolver
 
 apt-get install ffmpeg -y
 
@@ -13,8 +13,4 @@ if [ ! -f "thirdparty/music_Source_Separation_Training/ckpts/model_bs_roformer_e
     wget https://github.com/TRvlvr/model_repo/releases/download/all_public_uvr_models/model_bs_roformer_ep_317_sdr_12.9755.ckpt -O thirdparty/music_Source_Separation_Training/ckpts/model_bs_roformer_ep_317_sdr_12.9755.ckpt
 fi
 
-{
-    cd thirdparty/SongFormer/src/SongFormer
-    python utils/fetch_pretrained.py
-    cd ../../../../
-}
+python fetch_pretrained.py ./ckpts

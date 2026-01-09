@@ -28,13 +28,16 @@ scipy.inf = np.inf
 class SongFormerConfig:
     output_dir: str = MISSING
     model: str = MISSING
-    checkpoint: str  = MISSING
     config_path: str = MISSING
+    
     no_rule_post_processing: bool = False
     win_size: int = 420
     hop_size: int = 420
     num_classes: int = 128
+    CHECKPOINT_PATH: str = os.path.join(run_struct_anal.BASE_PATH, "ckpts", "SongFormer.safetensors")
     MUSICFM_HOME_PATH : str = os.path.join(run_struct_anal.BASE_PATH, 'ckpts', "MusicFM")
+    MUQ_PATH : str = os.path.join(run_struct_anal.BASE_PATH, 'ckpts', "MuQ-large-msd-iter")
+    
     BEFORE_DOWNSAMPLING_FRAME_RATES : float = 25
     AFTER_DOWNSAMPLING_FRAME_RATES : float = 8.333
     DATASET_LABEL : str = "SongForm-HX-8Class"
@@ -147,7 +150,7 @@ class AutoPrepSong:
 
     def init_struct_analyzer(self):
         # MuQ model loading (this will automatically fetch the checkpoint from huggingface)
-        self.muq = MuQ.from_pretrained("OpenMuQ/MuQ-large-msd-iter")
+        self.muq = MuQ.from_pretrained(self.songformer_init_args.MUQ_PATH)
         self.muq = self.muq.to(self.device).eval()
 
         # MusicFM model loading
@@ -167,7 +170,7 @@ class AutoPrepSong:
 
 
         """Load checkpoint from path"""
-        checkpoint_path=os.path.join(run_struct_anal.BASE_PATH, "ckpts", self.songformer_init_args.checkpoint)
+        checkpoint_path=self.songformer_init_args.CHECKPOINT_PATH
         if checkpoint_path.endswith(".pt"):
             checkpoint = torch.load(checkpoint_path, map_location=self.device)
         elif checkpoint_path.endswith(".safetensors"):
