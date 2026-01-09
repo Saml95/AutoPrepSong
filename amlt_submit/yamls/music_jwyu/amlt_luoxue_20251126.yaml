@@ -11,6 +11,10 @@ environment:
   registry: workspacegenaiacr.azurecr.io
   setup:
   - sudo chmod -R 777 /opt/conda/envs/ptca/lib/python3.10/site-packages
+  - sudo chmod -R 777 /usr/local/lib/python3.10/dist-packages/flash_attn*  # 添加这行
+  - pip uninstall flash_attn -y || true  # 添加这行
+  - pip install flash_attn --no-build-isolation --user  # 添加这行，重新编译安装
+  - export PATH=$$PATH:/home/aiscuser/.local/bin
   - sudo apt update ; sudo apt-get install -y ffmpeg 
   - pip install -r requirements.txt 
   - pip uninstall flash-attn -y
@@ -38,6 +42,7 @@ search:
     process_count_per_node: 1
     command:
       # - sleep infinity
+      - export TRANSFORMERS_NO_FLASH_ATTENTION=1
       - python3 scripts/autoprep_song_jwyu.py
         --config_path config/amlt_basic.yaml
         --data_yaml amlt_submit/data/luoxue_20251226.yaml
