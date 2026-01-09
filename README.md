@@ -1,5 +1,5 @@
 ## Set up environment
-
+3.10 / 3.12 测试过ok
 ```
 bash prepare.sh
 ```
