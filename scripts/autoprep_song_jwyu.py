@@ -504,7 +504,11 @@ class AutoPrepSong:
 
         # Process each audio-lyric pair through all steps
         for pair in tqdm(self.audio_lyric_pairs, total=len(self.audio_lyric_pairs), desc="Processing"):
-            self.process(wav_path=pair["audio_path"], lrc_path=pair["lyric_path"], output_dir=self.output_dir)
+            try:
+                self.process(wav_path=pair["audio_path"], lrc_path=pair["lyric_path"], output_dir=self.output_dir)
+            except Exception as e:
+                print(f"[Error] Failed to process {pair['audio_path']}: {e}")
+                continue
 
     def process(self, wav_path: str, lrc_path: str = None, output_dir: str = None):
         """
