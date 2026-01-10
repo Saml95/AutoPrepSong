@@ -28,7 +28,6 @@ mp.set_start_method("spawn", force=True)
 BASE_PATH=os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'thirdparty/SongFormer/src/SongFormer')
 
 MUSICFM_HOME_PATH = os.path.join(BASE_PATH, 'ckpts', "MusicFM")
-
 BEFORE_DOWNSAMPLING_FRAME_RATES = 25
 AFTER_DOWNSAMPLING_FRAME_RATES = 8.333
 

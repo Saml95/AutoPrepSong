@@ -10,7 +10,8 @@ sudo docker rm $name
 # container="pytorch/pytorch:2.4.0-cuda12.4-cudnn9-runtime"
 # container="nvcr.io/nvidia/pytorch:24.07-py3"
 # container="nvcr.io/nvidia/pytorch:24.10-py3"
-container="nvcr.io/nvidia/pytorch:25.11-py3"
+# container="nvcr.io/nvidia/pytorch:25.11-py3"
+container="nvcr.io/nvidia/pytorch:25.11-py3-amlt-AutoPrepSongV2"
 
 sudo docker run -d --privileged  --name $name \
     --net=host  --ipc=host  --shm-size 900g --shm-size 300g --gpus all \

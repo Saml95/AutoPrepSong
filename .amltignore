@@ -5,7 +5,6 @@ output/
 wandb/
 exp/
 rubbish/
-third_party/
 /data/
 ckpts/
 rubbish/
