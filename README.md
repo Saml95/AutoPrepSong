@@ -63,3 +63,8 @@ def process(audio_path, lyric_path):
 	return [{"text":, "start":, "end":}, {...}, ...}
 	# 需要手动保存
 ```
+## AMLT 提交
+```
+cd amlt_submit/yamls/music_jwyu
+amlt run amlt_luoxue_20251126.yaml
+```

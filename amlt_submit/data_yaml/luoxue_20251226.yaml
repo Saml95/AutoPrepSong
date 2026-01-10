@@ -1,0 +1,2 @@
+input_jsonl: /mnt/conversationhubhot/yaoyaochang/speech/data/music/yan/luoxue_20251226_all.jsonl
+output_base_dir: /mnt/conversationhubhot/yaoyaochang/speech/data/music/yan/meta/luoxue_20251226/AutoPrepSongV2/20260110
