@@ -45,7 +45,7 @@ search:
       # - sleep infinity
       - python3 scripts/autoprep_song_jwyu.py
         --config_path config/amlt_basic.yaml
-        --data_yaml amlt_submit/data/luoxue_20251226.yaml
+        --data_yaml amlt_submit/data_yaml/luoxue_20251226.yaml
         --start_idx {start_idx}
         --chunk_size {chunk_size}
     tags: [Project_Name:Speech, Experiment:Speech_Processing]
