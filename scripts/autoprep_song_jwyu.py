@@ -588,13 +588,17 @@ class AutoPrepSong:
         vad_json = json.load(open(vad_dir / f"{basename}.json", 'r', encoding='utf-8'))
 
         max_sec, filtered_vad_json = 0, []
-        for seg in vad_json:
-            if seg['end'] - seg['start'] < 0.2:
+        for idx, seg in enumerate(vad_json):
+            if seg['end'] - seg['start'] < 0.3:
                 extra.append(seg)
                 continue
-            if seg['start'] < max_sec-1:  # allow 1 sec mistake due to precision
-                wrong_t.append(seg)
+
+            if seg['start'] < max_sec - 10: # translation case, give up the rest
+                wrong_t += vad_json[idx:]
                 break
+            elif max_sec < max_sec - 3:
+                raise NotImplementedError("又是一点没见过的小惊喜")
+
 
             if seg['start'] - max_sec >= 1.5:
                 filtered_vad_json.append({
@@ -604,7 +608,12 @@ class AutoPrepSong:
                 })
             elif filtered_vad_json != []:
                 # merge with previous segment
-                filtered_vad_json[-1]['end'] = seg['start']
+                while filtered_vad_json != [] and seg['start'] < filtered_vad_json[-1]['start']:
+                    wrong_t.append(filtered_vad_json.pop(-1))
+
+                if filtered_vad_json != []:
+                    filtered_vad_json[-1]['end'] = seg['start']
+
 
             max_sec = seg['end']
             filtered_vad_json.append(seg.copy())
