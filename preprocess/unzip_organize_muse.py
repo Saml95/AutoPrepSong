@@ -74,7 +74,8 @@ def process_jsonl_files(root_dir, json_out_dir):
                 fout = open(fout, 'w')
                 new_obj = {
                     "song_id": song_id,
-                    "audio_path": audio_index[audio_name],
+                    "audio_path": os.path.join("/mnt/conversationhubhot/yaoyaochang/speech/data/music/muse20260112/bolshyC_Muse", \
+                                            os.path.relpath(audio_index[audio_name], root_dir)), #audio_index[audio_name],
                     "audio_length": AudioDecoder(audio_index[audio_name]).metadata.duration_seconds,
                     "segments": [{'text': f"[{re.subn(r"\d+", "", i['section'].lower())[0].strip()}] {i['text']}", 'start': i['startS'], 'end': i['endS'], 'speaker': None} for i in obj['sections']],
                     "info": json.dumps(obj)

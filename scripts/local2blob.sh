@@ -1,5 +1,5 @@
 # blob_cmd="/root/.local/bin/addfblob"
-blob_cmd="/home/jianweiyu/.local/bin/addfblob"
+blob_cmd="/home/zilongwang/.local/bin/addfblob"
 
 
 # INPUT="/data/jianwei/VibeASR"
@@ -20,14 +20,14 @@ blob_cmd="/home/jianweiyu/.local/bin/addfblob"
 # INPUT="/mnt/jianwei/data/huggingface_data/a50w/m-a-p_a50w/audio/"
 # TARGET="https://conversationhubhot.blob.core.windows.net/unilm/yaoyaochang/speech/data/music/a50w"
 
-blob_cluster=conversationhubhot
-TARGET="https://conversationhubhot.blob.core.windows.net/unilm/jianweiyu/"
-INPUT="/home/jianweiyu/exp/AutoPrepSongV2"
+# blob_cluster=conversationhubhot
+# TARGET="https://conversationhubhot.blob.core.windows.net/unilm/jianweiyu/"
+# INPUT="/home/jianweiyu/exp/AutoPrepSongV2"
 
-AZCOPY_BUFFER_GB=300 AZCOPY_CONCURRENCY_VALUE=AUTO AZCOPY_CONCURRENT_FILES=1024 azcopy copy \
-    "${INPUT}" \
-    "${TARGET}$(${blob_cmd}   token -a http://135.149.113.42:5950/api -k CsOG9vleDpcc-AqQcTmJlKw4zxrR3aMsWTvTSGv1GVY= -n conversationhubhot -c unilm)" \
-    --recursive --log-level=WARNING 
+# AZCOPY_BUFFER_GB=300 AZCOPY_CONCURRENCY_VALUE=AUTO AZCOPY_CONCURRENT_FILES=1024 azcopy copy \
+#     "${INPUT}" \
+#     "${TARGET}$(${blob_cmd}   token -a http://135.149.113.42:5950/api -k CsOG9vleDpcc-AqQcTmJlKw4zxrR3aMsWTvTSGv1GVY= -n conversationhubhot -c unilm)" \
+#     --recursive --log-level=WARNING 
 
 
 
@@ -45,3 +45,13 @@ AZCOPY_BUFFER_GB=300 AZCOPY_CONCURRENCY_VALUE=AUTO AZCOPY_CONCURRENT_FILES=1024 
 #     lang="${dataset_to_lang[$dataset]}"
 #     azcopy sync "https://conversationhubhot.blob.core.windows.net/unilm/jianweiyu/datasets/vibevoice/sft/$dataset/data20251230/json/$(${blob_cmd} token -a http://135.149.113.42:5950/api -k CsOG9vleDpcc-AqQcTmJlKw4zxrR3aMsWTvTSGv1GVY= -n conversationhubhot -c unilm)" "https://conversationhubhot.blob.core.windows.net/unilm/jianweiyu/datasets/vibevoice/sft/combine_multilingual_100h/$lang/$(${blob_cmd} token -a http://135.149.113.42:5950/api -k CsOG9vleDpcc-AqQcTmJlKw4zxrR3aMsWTvTSGv1GVY= -n conversationhubhot -c unilm)" --recursive 
 # done
+
+
+# 同步Muse数据
+INPUT="/data/jianwei/data/music/muse20260112/"
+TARGET="https://conversationhubhot.blob.core.windows.net/unilm/yaoyaochang/speech/data/music/muse20260112/"
+
+AZCOPY_BUFFER_GB=300 AZCOPY_CONCURRENCY_VALUE=AUTO AZCOPY_CONCURRENT_FILES=1024 azcopy sync \
+    "${INPUT}" \
+    "${TARGET}$(${blob_cmd}   token -a http://135.149.113.42:5950/api -k CsOG9vleDpcc-AqQcTmJlKw4zxrR3aMsWTvTSGv1GVY= -n conversationhubhot -c unilm)" \
+    --recursive --log-level=WARNING
