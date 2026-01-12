@@ -60,9 +60,9 @@ search:
   params:
     - name: start_idx
       spec: discrete
-      values: range(000_000, 20749, 163)
+      values: range(000_000, 116384, 910)
     - name: chunk_size
       spec: discrete
       values: [
-        163
+        910
       ]

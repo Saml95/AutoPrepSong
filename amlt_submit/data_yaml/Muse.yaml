@@ -1,2 +1,2 @@
-input_jsonl: local/Muse_jsonl.scp #/mnt/conversationhubhot/yaoyaochang/speech/data/music/muse20260112/Muse_jsons.scp 
-output_base_dir: local/Muse #/mnt/conversationhubhot/yaoyaochang/speech/data/music/muse20260112/AutoPrepSongV2/20260113
+input_jsonl: /mnt/conversationhubhot/yaoyaochang/speech/data/music/muse20260112/Muse_jsons.scp 
+output_base_dir: /mnt/conversationhubhot/yaoyaochang/speech/data/music/muse20260112/AutoPrepSongV2/20260113
