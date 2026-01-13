@@ -474,14 +474,14 @@ def generate_html_output(
     .segment-item-warning {
         margin-bottom: 20px;
         padding: 15px;
-        border: 2px solid #fbc02d;
+        border: 2px solid var(--border-color);
         border-radius: 8px;
         background-color: var(--bg-secondary);
         transition: all 0.3s ease;
     }
     .segment-item-warning:hover {
         box-shadow: 0 4px 12px var(--shadow);
-        border-color: var(--border-accent);
+        border-color: #fbc02d;
     }
 
     .segment-header {
@@ -525,7 +525,17 @@ def generate_html_output(
         color: var(--text-primary);
         line-height: 1.6;
     }
-    
+
+    .segment-text-warning {
+        margin: 10px 0;
+        padding: 10px;
+        background-color: var(--bg-primary);
+        border-left: 3px solid #fbc02d;
+        border-radius: 4px;
+        color: var(--text-primary);
+        line-height: 1.6;
+    }
+
     .segment-audio {
         width: 100%;
         margin-top: 12px;
@@ -605,7 +615,10 @@ def generate_html_output(
         
         # Text content
         text = segment['text'].strip()
-        html += f"<div class='segment-text'>{text if text else '<i>No text</i>'}</div>"
+        if segment['vad_anomaly']:
+            html += f"<div class='segment-text-warning'>{text if text else '<i>No text</i>'}</div>"
+        else:
+            html += f"<div class='segment-text'>{text if text else '<i>No text</i>'}</div>"
         
         html += "</div>"  # End segment-info
         
