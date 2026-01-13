@@ -37,7 +37,7 @@ def has_real_lyrics(text):
     return len(text) > 0
 
 
-def check_json(json_path):
+def check_json(json_path, final_json_path):
     """
     返回 True / False
     True  -> correct
@@ -46,34 +46,38 @@ def check_json(json_path):
     try:
         with open(json_path, "r", encoding="utf-8") as f:
             segments = json.load(f)
+        with open(final_json_path, "r", encoding="utf-8") as f:
+            final_json = json.load(f)
     except Exception as e:
         print(f"[ERROR] load failed: {json_path}, {e}")
         return False
-
-    for seg in segments:
+    
+    
+    assert len(final_json['segments']) == len(segments)
+    for seg_idx, seg in enumerate(segments):
         text = seg.get("text", "")
         vad_str = seg.get("vad_res", "")
 
         vad_list = parse_vad(vad_str)
         ratio = vad_ratio(vad_list)
 
+        total_correct = True
         if has_real_lyrics(text):
             # 有歌词
             if ratio <= 0.5:
-                seg['is_anomaly'] = True
-                return False
+                final_json['segments'][seg_idx]['vad_anomaly'] = True
+                total_correct = False
         else:
             # 无歌词
-            seg['is_anomaly'] = True
             if ratio >= 0.3:
-                return False
-
-    return True
+                final_json['segments'][seg_idx]['vad_anomaly'] = True
+                total_correct = False
+    with open(final_json_path, "w", encoding="utf-8") as f:
+            json.dump(final_json, f, ensure_ascii=False, indent=2)
+    return total_correct
 
 def main(
     scp_path,
-    correct_scp="correct.scp",
-    wrong_scp="wrong.scp"
 ):
     correct = []
     wrong = []
@@ -87,20 +91,16 @@ def main(
             if not (vad_path and vad_path.exists()):
                 continue
 
-            if check_json(vad_path):
+            if check_json(vad_path, json_path):
                 correct.append(json_path)
             else:
                 wrong.append(json_path)
 
-    with open(correct_scp, "w", encoding="utf-8") as f:
-        f.write("\n".join(correct) + "\n")
 
-    with open(wrong_scp, "w", encoding="utf-8") as f:
-        f.write("\n".join(wrong) + "\n")
 
     print(f"Correct: {len(correct)}")
     print(f"Wrong:   {len(wrong)}")
 
 if __name__ == "__main__":
 
-    main("/mnt/conversationhubhot/yaoyaochang/speech/data/music/muse20260112/Muse_jsons.scp", "/mnt/conversationhubhot/yaoyaochang/speech/data/music/muse20260112/Muse_jsons_correct.scp", "/mnt/conversationhubhot/yaoyaochang/speech/data/music/muse20260112/Muse_jsons_wrong.scp")
+    main("/mnt/conversationhubhot/yaoyaochang/speech/data/music/muse20260112/Muse_jsons.scp")
