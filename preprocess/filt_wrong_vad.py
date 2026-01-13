@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 from tqdm import tqdm
 
-LYRIC_ROOT = Path("/mnt/conversationhubhot/yaoyaochang/speech/data/music/muse20260112/jsons")
+LYRIC_ROOT = Path("/data/jianwei/data/music/muse20260112/jsons")
 VAD_ROOT = Path("/data/jianwei/data/music/muse20260112/AutoPrepSongV2/20260113/intermediate/vad_output")
 
 def lyric_json_to_vad_json(lyric_json_path: str) -> Path:
@@ -83,7 +83,7 @@ def main(
     wrong = []
 
     with open(scp_path, "r", encoding="utf-8") as f:
-        for line in tqdm(f):
+        for line in tqdm(f, total=116384):
             json_path = line.strip()
             # /mnt/conversationhubhot/yaoyaochang/speech/data/music/muse20260112/jsons/en_part16_of_35/suno_en_015653_0.json
             # /mnt/conversationhubhot/yaoyaochang/speech/data/music/muse20260112/AutoPrepSongV2/20260113/intermediate/vad_output/suno_en_015653_0.mp3.json
@@ -103,4 +103,4 @@ def main(
 
 if __name__ == "__main__":
 
-    main("/mnt/conversationhubhot/yaoyaochang/speech/data/music/muse20260112/Muse_jsons.scp")
+    main("/data/jianwei/data/music/muse20260112/Muse_jsons_local.scp")

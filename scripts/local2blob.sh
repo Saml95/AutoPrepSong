@@ -17,16 +17,16 @@ blob_cmd="/home/zilongwang/.local/bin/addfblob"
 # INPUT="/mnt/jianwei/data/MiHoYO/2"
 # TARGET="https://conversationhubhot.blob.core.windows.net/unilm/yaoyaochang/speech/data/MiHoYO/20251231"
 
-INPUT="/data/jianwei/music/a50w"
-TARGET="https://conversationhubhot.blob.core.windows.net/unilm/yaoyaochang/speech/data/music/a50w"
+# INPUT="/data/jianwei/music/a50w"
+# TARGET="https://conversationhubhot.blob.core.windows.net/unilm/yaoyaochang/speech/data/music/a50w"
 
 # blob_cluster=conversationhubhot
 # TARGET="https://conversationhubhot.blob.core.windows.net/unilm/jianweiyu/"
 # INPUT="/home/jianweiyu/exp/AutoPrepSongV2"
 
 # # 同步Muse数据
-# INPUT="/data/jianwei/data/music/muse20260112/"
-# TARGET="https://conversationhubhot.blob.core.windows.net/unilm/yaoyaochang/speech/data/music/muse20260112"
+INPUT="/data/jianwei/data/music/muse20260112/"
+TARGET="https://conversationhubhot.blob.core.windows.net/unilm/yaoyaochang/speech/data/music/muse20260112"
 
 # AZCOPY_BUFFER_GB=300 AZCOPY_CONCURRENCY_VALUE=AUTO AZCOPY_CONCURRENT_FILES=1024 azcopy copy \
 #     "${INPUT}" \
