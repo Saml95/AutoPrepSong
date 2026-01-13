@@ -6,16 +6,16 @@ import librosa
 # /mnt/conversationhubhot/yaoyaochang/speech/data/music/jianwei_raw_kuwo/
 # scp_path: /mnt/conversationhubhot/yaoyaochang/speech/data/music/kuwo_raw_disk_all_music_file.scp
 
-jsl = json.load(open("/mnt/conversationhubhot/yaoyaochang/speech/data/netease/results.json"))
+jsl = json.load(open("/data/jianwei/music/netease/results.json"))
 id2meta = {i['id']: i for i in jsl if i['歌词'] != ''}
 
 print(f"{len(id2meta)} / {len(jsl)} have lyrics")
-outdir = Path("/mnt/chenyuyang/data/netease/")
+outdir = Path("/data/jianwei/music/netease")
 (outdir / 'lyrics').mkdir(exist_ok=True, parents=True)
 
 save_jsonl = open(outdir / "wyy_valid.jsonl", 'w')
 
-process_files = open("/mnt/conversationhubhot/yaoyaochang/speech/data/netease/songs.scp").readlines()
+process_files = open("/data/jianwei/music/netease/songs.scp").readlines()
 for l in tqdm(process_files, total=len(process_files)):
     audio_path = Path(l.strip())
     idx = audio_path.stem

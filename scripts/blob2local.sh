@@ -1,5 +1,5 @@
 # blob_cmd="/root/.local/bin/addfblob"
-blob_cmd="/home/jianweiyu/.local/bin/addfblob"
+blob_cmd="/home/zilongwang/.local/bin/addfblob"
 
 TARGET="exp/ray_eval_date/"
 mkdir -p ${TARGET}
@@ -20,8 +20,8 @@ blob_cluster=conversationhub
 
 
 # INPUT=https://conversationhub.blob.core.windows.net/unilm/jianweiyu/VibeVoice/VibeASR/v1/exp/ray_eval_480s
-INPUT=https://conversationhub.blob.core.windows.net/unilm/jianweiyu/VibeVoice/VibeASR/v1/exp/ray_eval_date/${subset}
-TARGET=`pwd`/exp/ray_eval_date/
+# INPUT=https://conversationhub.blob.core.windows.net/unilm/jianweiyu/VibeVoice/VibeASR/v1/exp/ray_eval_date/${subset}
+# TARGET=`pwd`/exp/ray_eval_date/
 
 
 # TARGET="/mnt/jianwei/VibeASR/exp/yujie_eval/dataset_drop"
@@ -49,8 +49,9 @@ TARGET=`pwd`/exp/ray_eval_date/
 
 
 blob_cluster=conversationhubhot
-INPUT="https://conversationhubhot.blob.core.windows.net/unilm/yaoyaochang/speech/data/raw_disk/20251229_4/APY190411001_1351小时普通话自然对话语音数据/json_fix"
-TARGET="/datadisk/data/speech/DC20251229"
+INPUT="https://conversationhubhot.blob.core.windows.net/unilm/yaoyaochang/speech/data/music/muse20260112/AutoPrepSongV2/20260113/intermediate/vad_output"
+TARGET="/data/jianwei/data/music/muse20260112/AutoPrepSongV2/20260113/intermediate/"
+
 
 
 azcopy copy \
