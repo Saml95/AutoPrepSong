@@ -45,7 +45,7 @@ search:
       # - sleep infinity
       - python3 scripts/autoprep_song_jwyu.py
         --config_path config/amlt_basic.yaml
-        --data_yaml amlt_submit/data_yaml/luoxue_batch3.yaml
+        --data_yaml amlt_submit/data_yaml/luoxue_batch4.yaml
         --start_idx {start_idx}
         --chunk_size {chunk_size}
     tags: [Project_Name:Speech, Experiment:Speech_Processing]
@@ -60,9 +60,9 @@ search:
   params:
     - name: start_idx
       spec: discrete
-      values: range(000_000, 20749, 163)
+      values: range(000_000, 33290, 261) # batch3: 20749 batch4: 33290 batch5: 22724
     - name: chunk_size
       spec: discrete
       values: [
-        163
+        261
       ]

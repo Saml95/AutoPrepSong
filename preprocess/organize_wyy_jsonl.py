@@ -10,14 +10,14 @@ jsl = json.load(open("/data/jianwei/music/netease/results.json"))
 id2meta = {i['id']: i for i in jsl if i['歌词'] != ''}
 
 print(f"{len(id2meta)} / {len(jsl)} have lyrics")
-outdir = Path("/data/jianwei/music/netease")
+outdir = Path("/mnt/conversationhubhot/yaoyaochang/speech/data/netease")
 (outdir / 'lyrics').mkdir(exist_ok=True, parents=True)
 
 save_jsonl = open(outdir / "wyy_valid.jsonl", 'w')
 
 process_files = open("/data/jianwei/music/netease/songs.scp").readlines()
 for l in tqdm(process_files, total=len(process_files)):
-    audio_path = Path(l.strip())
+    audio_path = Path(l.strip().replace("/mnt/conversationhubhot/yaoyaochang/speech/data/netease", "/data/jianwei/music/netease"))
     idx = audio_path.stem
     if idx not in id2meta:
         # print(f"{audio_path} does not find lyrics!")

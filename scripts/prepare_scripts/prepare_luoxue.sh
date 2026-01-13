@@ -4,8 +4,8 @@ cd $basedir
 
 
 inputs="
-/mnt/conversationhubhot/yaoyaochang/speech/data/music/yan/luoxue_batch2
-/mnt/conversationhubhot/yaoyaochang/speech/data/music/yan/luoxue_batch3
+/mnt/conversationhubhot/yaoyaochang/speech/data/music/yan/luoxue_batch4
+/mnt/conversationhubhot/yaoyaochang/speech/data/music/yan/luoxue_batch5
 "
 
 output_base_dir="/mnt/conversationhubhot/yaoyaochang/speech/data/music/yan/meta"
