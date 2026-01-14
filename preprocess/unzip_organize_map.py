@@ -5,10 +5,12 @@ import json
 from glob import glob
 import re
 from torchcodec.decoders import AudioDecoder
+from tqdm import tqdm
+import tarfile
 
 ROOT_DIR = "/data/jianwei/music/a50w/m-a-p_a50w/audio/"
-JSON_OUT_DIR = "/data/jianwei/data/music/muse20260112/jsons"
-
+JSON_OUT_DIR = "/data/jianwei/music/a50w/jsons"
+LYRICS_DIR = "/data/jianwei/music/a50w/lyrics/"
 
 import zipfile
 from pathlib import Path
@@ -52,67 +54,134 @@ def unzip_all_7z(
             print(ret.stderr)
 
 
+def extract_all_tars(root_dir):
+    """解压所有 tar 文件到同名目录，解压成功后删除原 tar"""
+    tar_files = glob(os.path.join(root_dir, "**/*.tar"), recursive=True)
+
+    for tar_path in tar_files:
+        name = os.path.splitext(os.path.basename(tar_path))[0]
+        extract_dir = os.path.join(root_dir, name)
+
+        # if os.path.exists(extract_dir): # TODO 部分目录重合了然后跳过了，一会儿需要重跑一遍
+        #     print(f"[SKIP] {name} already extracted")
+        #     continue
+
+        print(f"[EXTRACT] {tar_path} -> {extract_dir}")
+        os.makedirs(extract_dir, exist_ok=True)
+
+        try:
+            with tarfile.open(tar_path, "r") as tar:
+                tar.extractall(path=extract_dir)
+
+            # 只有解压成功才删除
+            os.remove(tar_path)
+            print(f"[DELETE] {tar_path}")
+
+        except Exception as e:
+            print(f"[FAIL] {tar_path}: {e}")
+            # 可选：失败时清理解压到一半的目录
+            # shutil.rmtree(extract_dir, ignore_errors=True)
 
 
-def build_audio_index(root_dir):
+
+def load_all_jsonl(jsonl_dir):
+    all_data = {}
+    jsonl_files = glob(str(Path(jsonl_dir) / "*.jsonl"))
+    for jf in jsonl_files:
+        with open(jf, "r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    line = json.loads(line)
+                    all_data[line['id']] = line
+    return all_data
+
+
+def build_audio_index(audio_dir):
+    audio_files = glob(str(Path(audio_dir) / "**/*.mp3"), recursive=True)
+    audio_map = {}
+    for ap in audio_files:
+        p = Path(ap)
+        if p.is_file():
+            audio_map[p.stem] = str(p)
+    return audio_map
+
+
+def convert_segmented_lyrics(segmented_lyrics):
+    new_segments = []
+    for seg in segmented_lyrics:
+        start = float(seg["offset"])
+        duration = float(seg["duration"])
+        end = start + duration
+        new_segments.append({
+            "start": start,
+            "end": end,
+            "text": seg["line_content"].strip().replace(']\n', '] ').replace('\n', '. '),
+            "speaker": None
+        })
+    return new_segments
+
+
+def get_output_json_path(audio_path):
     """
-    建立 audio 文件名 -> 完整相对路径 的索引
-    用于快速匹配 audio_path
+    根据 audio_path 生成 json 输出路径
     """
-    index = {}
-    for part_dir in os.listdir(root_dir):
-        part_path = os.path.join(root_dir, part_dir)
-        if not os.path.isdir(part_path):
+    audio_path = Path(audio_path)
+    rel_path = audio_path.relative_to(ROOT_DIR)
+    parts = rel_path.parts
+
+    # 深度为 1：xxx.wav
+    if len(parts) == 1:
+        out_rel = Path("others") / audio_path.stem
+    else:
+        out_rel = Path(*parts[:-1]) / audio_path.stem
+
+    return Path(JSON_OUT_DIR) / out_rel.with_suffix(".json")
+
+
+def process():
+    all_lyrics = load_all_jsonl(LYRICS_DIR)
+    print(f"load {len(all_lyrics)} lyric lines!")
+    audio_map = build_audio_index(ROOT_DIR)
+    print(f"load {len(audio_map)} audios!")
+
+    saved_cnt = 0
+
+    for idx in tqdm(audio_map, total=len(audio_map)):
+        if idx not in audio_map:
+            print(f"fail to find lyrics ({audio_map[idx]})")
             continue
-        if not (part_dir.startswith("cn_part") or part_dir.startswith("en_part")):
-            continue
+        data = all_lyrics[idx]
+        audio_path = audio_map[idx]
+        
+        segmented_lyrics = data["splitted_lyrics"]["segmented_lyrics"]
 
-        for root, _, files in os.walk(part_path):
-            for f in files:
-                if f.endswith((".mp3", ".wav", ".flac")):
-                    abs_path = os.path.abspath(
-                        os.path.join(root, f)
-                    )
-                    index[f] = abs_path
-    return index
+        new_data = {
+            "idx": idx,
+            "audio_path": audio_path.replace("/data/jianwei/music/a50w", "/mnt/conversationhubhot/yaoyaochang/speech/data/music/a50w"),
+            "audio_length": data["audio_length_in_sec"],
+            "segments": convert_segmented_lyrics(segmented_lyrics),
+            "info": str({
+                k: v for k, v in data.items()
+                if k not in ["idx", "audio_length_in_sec"]
+            })
+        }
+        # breakpoint()
+        # 6. 保存到对应路径
+        out_path = get_output_json_path(audio_path)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
 
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(new_data, f, ensure_ascii=False, indent=2)
 
-def process_jsonl_files(root_dir, json_out_dir):
-    jsonl_files = glob(os.path.join(root_dir, "*_*.jsonl"))
-    audio_index = build_audio_index(root_dir)
+        saved_cnt += 1
 
-    cnt = 0
-    for jsonl_path in jsonl_files:
-        print(f"[PROCESS] {jsonl_path}")
-        with open(jsonl_path, "r", encoding="utf-8") as fin:
-            for line in fin:
-                obj = json.loads(line)
-                song_id = obj["song_id"]
-                old_audio_path = obj["audio_path"]
-                audio_name = os.path.basename(old_audio_path)
-
-                if audio_name not in audio_index:
-                    print(f"[WARN] audio not found: {audio_name}")
-                    continue
-                
-                fout = (Path(json_out_dir) / "/".join(Path(audio_index[audio_name]).parts[-2:])).with_suffix(".json")
-                fout.parent.mkdir(exist_ok=True, parents=True)
-                fout = open(fout, 'w')
-                new_obj = {
-                    "song_id": song_id,
-                    "audio_path": os.path.join("/mnt/conversationhubhot/yaoyaochang/speech/data/music/muse20260112/bolshyC_Muse", \
-                                            os.path.relpath(audio_index[audio_name], root_dir)), #audio_index[audio_name],
-                    "audio_length": AudioDecoder(audio_index[audio_name]).metadata.duration_seconds,
-                    "segments": [{'text': f"[{re.subn(r"\d+", "", i['section'].lower())[0].strip()}] {i['text']}", 'start': i['startS'], 'end': i['endS'], 'speaker': None} for i in obj['sections']],
-                    "info": json.dumps(obj)
-                }
-                fout.write(json.dumps(new_obj, ensure_ascii=False, indent=2))
-                fout.close()
-                cnt += 1
-
-    print(f"[DONE] saved {cnt} entries to {json_out_dir}")
+    print(f"Saved JSON files: {saved_cnt}")
 
 
 if __name__ == "__main__":
-    unzip_all_7z(ROOT_DIR)
-    # process_jsonl_files(ROOT_DIR, JSON_OUT_DIR)
+    # unzip_all_7z(ROOT_DIR)
+    # extract_all_tars(ROOT_DIR)
+    results = process()
+
+
+

@@ -48,9 +48,10 @@ blob_cluster=conversationhub
 # TARGET="/mnt/jianwei/data/music2025/meta/20251227/"
 
 
-blob_cluster=conversationhubhot
-INPUT="https://conversationhubhot.blob.core.windows.net/unilm/yaoyaochang/speech/data/music/muse20260112/AutoPrepSongV2/20260113/intermediate/vad_output"
-TARGET="/data/jianwei/data/music/muse20260112/AutoPrepSongV2/20260113/intermediate/"
+# blob_cluster=conversationhubhot
+# INPUT="https://conversationhubhot.blob.core.windows.net/unilm/yaoyaochang/speech/data/music/kuwo_raw_disk/"
+# TARGET="/data/jianwei/data/music/"
+
 
 
 

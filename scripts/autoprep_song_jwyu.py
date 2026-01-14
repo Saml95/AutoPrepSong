@@ -746,7 +746,7 @@ def load_config(args) -> dict:
     # Create config from command line args
     cli_cfg = OmegaConf.create({
         "input_jsonl": input_jsonl,
-        "output_base_dir": output_base_dir,
+        "output_base_dir": os.path.join(output_base_dir, f"{args.start_idx}_{args.chunk_size if args.chunk_size is not None else 'all'}"),
         "start_idx": args.start_idx,
         "chunk_size": args.chunk_size,
     })

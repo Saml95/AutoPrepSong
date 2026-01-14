@@ -25,8 +25,8 @@ blob_cmd="/home/zilongwang/.local/bin/addfblob"
 # INPUT="/home/jianweiyu/exp/AutoPrepSongV2"
 
 # # 同步Muse数据
-INPUT="/data/jianwei/data/music/muse20260112/"
-TARGET="https://conversationhubhot.blob.core.windows.net/unilm/yaoyaochang/speech/data/music/muse20260112"
+INPUT="/data/jianwei/data/music/muse20260112/jsons"
+TARGET="https://conversationhubhot.blob.core.windows.net/unilm/yaoyaochang/speech/data/music/muse20260112/jsons"
 
 # AZCOPY_BUFFER_GB=300 AZCOPY_CONCURRENCY_VALUE=AUTO AZCOPY_CONCURRENT_FILES=1024 azcopy copy \
 #     "${INPUT}" \
