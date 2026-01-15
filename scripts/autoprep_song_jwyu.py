@@ -19,10 +19,9 @@ import soundfile as sf
 import run_separation
 import run_struct_anal
 import run_sentence_vad
+from run_merge import merge_segments
 
 scipy.inf = np.inf
-
-
 
 
 @dataclass
@@ -30,11 +29,12 @@ class SongFormerConfig:
     output_dir: str = MISSING
     model: str = MISSING
     config_path: str = MISSING
-    
+
     no_rule_post_processing: bool = False
     win_size: int = 420
     hop_size: int = 420
     num_classes: int = 128
+
     CHECKPOINT_PATH: str = os.path.join(run_struct_anal.BASE_PATH, "ckpts", "SongFormer.safetensors")
     MUSICFM_HOME_PATH : str = os.path.join(run_struct_anal.BASE_PATH, 'ckpts', "MusicFM")
     MUQ_PATH : str = os.path.join(run_struct_anal.BASE_PATH, 'ckpts', "MuQ-large-msd-iter")
@@ -73,6 +73,7 @@ class VADConfig:
     fmax: int = 4000
 
 
+
 class AutoPrepSong:
     def __init__(self, config: DictConfig = None, **kwargs):
         # Support both config object and kwargs
@@ -96,6 +97,8 @@ class AutoPrepSong:
         # Get start_idx and chunk_size from config
         self.start_idx = self.config.get("start_idx", 0)
         self.chunk_size = self.config.get("chunk_size", None)
+
+        self.merge_seconds = self.config.get("merge_seconds", None)
 
         # Load audio-lyric pairs from jsonl file
         if self.input_jsonl is not None:
@@ -404,7 +407,6 @@ class AutoPrepSong:
 
 
     def init_separator(self):
-
         torch.backends.cudnn.benchmark = True
 
         self.separator_model, self.separate_config = run_separation.get_model_from_config(self.separator_init_args.model_type, self.separator_init_args.config_path)
@@ -653,6 +655,9 @@ class AutoPrepSong:
         # 根据 separator 配置决定后缀
         codec = 'flac' if getattr(self.separator_init_args, 'flac_file', True) else 'wav'
         
+        if self.merge_seconds is not None:
+            segments = merge_segments(segments, self.merge_seconds)
+
         output_json = {
             "audio_path": str(Path(wav_path).resolve()),
             "audio_length": total_len,
@@ -665,6 +670,8 @@ class AutoPrepSong:
         json.dump(output_json,
                   open(output_dir / f"{basename}.json", 'w', encoding='utf-8'),
                   ensure_ascii=False, indent=4)
+
+
 
 
 def parse_args():
