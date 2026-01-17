@@ -6,18 +6,19 @@ apt-get install ffmpeg -y
 
 pip uninstall flash-attn -y
 
-git config --global --add safe.directory `pwd`/AutoPrepSongV2
+git config --global --add safe.directory `pwd`
 git submodule update --init --recursive
 
+# if [ ! -f "thirdparty/music_Source_Separation_Training/ckpts/model_bs_roformer_ep_317_sdr_12.9755.ckpt" ]; then
+#     echo "Downloading pre-trained BS Roformer..."
+#     mkdir thirdparty/music_Source_Separation_Training/ckpts
+#     wget https://github.com/TRvlvr/model_repo/releases/download/all_public_uvr_models/model_bs_roformer_ep_317_sdr_12.9755.ckpt -O thirdparty/music_Source_Separation_Training/ckpts/model_bs_roformer_ep_317_sdr_12.9755.ckpt
+# fi
 
-if [ ! -f "thirdparty/music_Source_Separation_Training/ckpts/model_bs_roformer_ep_317_sdr_12.9755.ckpt" ]; then
-    echo "Downloading pre-trained BS Roformer..."
-    mkdir thirdparty/music_Source_Separation_Training/ckpts
-    wget https://github.com/TRvlvr/model_repo/releases/download/all_public_uvr_models/model_bs_roformer_ep_317_sdr_12.9755.ckpt -O thirdparty/music_Source_Separation_Training/ckpts/model_bs_roformer_ep_317_sdr_12.9755.ckpt
-fi
+# python fetch_pretrained.py ./ckpts
 
-python fetch_pretrained.py ./ckpts
 
+##################################
 
 # remove git folders to avoid nested git repo issues
 # gits="/home/jianweiyu/exp/AutoPrepSongV2/thirdparty/music_Source_Separation_Training/.git

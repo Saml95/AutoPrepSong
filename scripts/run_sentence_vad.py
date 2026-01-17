@@ -146,6 +146,28 @@ def process(audio_path, lyric_path, vad_kwargs={}):
     return result
 
 
+def process_with_seg(audio_path, segments, vad_kwargs={}):
+
+    audio, sr = librosa.load(audio_path, sr=None, mono=True)
+    # print(audio.shape)
+    
+    result = []
+    for i in range(len(segments)):
+        start_frame = int(segments[i]['start'] * sr)
+        end_frame = int(segments[i]['end'] * sr)
+        segment_audio = audio[...,start_frame:end_frame]
+        vad_start , vad_end , vad_mask = energy_vad_from_start(segment_audio, sr, **vad_kwargs)
+        # print(vad_start+lyric_starts[i]['start'], vad_end+lyric_starts[i]['start'], lyric_starts[i])
+
+        result.append({
+            "text": segments[i]['text'],
+            "start": segments[i]['start'],
+            "end": segments[i]['end'],
+            "vad_res": str(vad_mask.astype(int).tolist())
+        })
+    # breakpoint()
+    return result
+
 if __name__ == "__main__":
     lrc2wav_scp, sep_dir, output_dir = sys.argv[1:]
     output_dir, sep_dir = Path(output_dir), Path(sep_dir)
@@ -160,4 +182,8 @@ if __name__ == "__main__":
         result = process(sep_dir / basename / "vocals.wav", lrc_path)
         with open(str(output_dir/ basename) + ".json", "w", encoding="utf-8") as fout:
             json.dump(result, fout, ensure_ascii=False, indent=2)   
+
     # print(process("local/separation_output/bs_roformer/luoxue_20251226_all/ - 在夏天为你写的情诗.flac/vocals.wav", "/mnt/conversationhubhot/yaoyaochang/speech/data/music/yan/luoxue/ - 在夏天为你写的情诗.lrc"))
+    
+    # x = json.load(open("/mnt/conversationhubhot/yaoyaochang/speech/data/music/muse20260112/jsons/en_part16_of_35/suno_en_015653_0.json"))
+    # process_with_seg(x['audio_path'], x['segments'])

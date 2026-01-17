@@ -352,7 +352,8 @@ def process_json_data(json_data: Dict) -> Tuple[str, List[Dict], List[str], Dict
             'start_time': start_time,
             'end_time': end_time,
             'text': seg.get('text', ''),
-            'speaker': seg.get("speaker", seg.get('speaker_id', seg.get('umap_segment_labels', 'Unknown')))
+            'speaker': seg.get("speaker", seg.get('speaker_id', seg.get('umap_segment_labels', 'Unknown'))),
+            'vad_anomaly':seg.get('vad_anomaly', False),
         }
         
         processed_segments.append(segment_info)
@@ -469,7 +470,20 @@ def generate_html_output(
         box-shadow: 0 4px 12px var(--shadow);
         border-color: var(--border-accent);
     }
-    
+
+    .segment-item-warning {
+        margin-bottom: 20px;
+        padding: 15px;
+        border: 2px solid var(--border-color);
+        border-radius: 8px;
+        background-color: var(--bg-secondary);
+        transition: all 0.3s ease;
+    }
+    .segment-item-warning:hover {
+        box-shadow: 0 4px 12px var(--shadow);
+        border-color: #fbc02d;
+    }
+
     .segment-header {
         margin-bottom: 12px;
         padding-bottom: 10px;
@@ -511,7 +525,17 @@ def generate_html_output(
         color: var(--text-primary);
         line-height: 1.6;
     }
-    
+
+    .segment-text-warning {
+        margin: 10px 0;
+        padding: 10px;
+        background-color: var(--bg-primary);
+        border-left: 3px solid #fbc02d;
+        border-radius: 4px;
+        color: var(--text-primary);
+        line-height: 1.6;
+    }
+
     .segment-audio {
         width: 100%;
         margin-top: 12px;
@@ -567,8 +591,10 @@ def generate_html_output(
         
         # Get speaker without mapping
         speaker = segment['speaker']
-        
-        html += f"<div class='segment-item'>"
+        if segment['vad_anomaly']:
+            html += f"<div class='segment-item-warning'>"
+        else:
+            html += f"<div class='segment-item'>"
         
         # Header
         html += "<div class='segment-header'>"
@@ -589,7 +615,10 @@ def generate_html_output(
         
         # Text content
         text = segment['text'].strip()
-        html += f"<div class='segment-text'>{text if text else '<i>No text</i>'}</div>"
+        if segment['vad_anomaly']:
+            html += f"<div class='segment-text-warning'>{text if text else '<i>No text</i>'}</div>"
+        else:
+            html += f"<div class='segment-text'>{text if text else '<i>No text</i>'}</div>"
         
         html += "</div>"  # End segment-info
         

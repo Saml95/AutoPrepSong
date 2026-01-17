@@ -19,9 +19,10 @@ import soundfile as sf
 import run_separation
 import run_struct_anal
 import run_sentence_vad
-from run_merge import merge_segments
 
 scipy.inf = np.inf
+
+
 
 
 @dataclass
@@ -29,12 +30,11 @@ class SongFormerConfig:
     output_dir: str = MISSING
     model: str = MISSING
     config_path: str = MISSING
-
+    
     no_rule_post_processing: bool = False
     win_size: int = 420
     hop_size: int = 420
     num_classes: int = 128
-
     CHECKPOINT_PATH: str = os.path.join(run_struct_anal.BASE_PATH, "ckpts", "SongFormer.safetensors")
     MUSICFM_HOME_PATH : str = os.path.join(run_struct_anal.BASE_PATH, 'ckpts', "MusicFM")
     MUQ_PATH : str = os.path.join(run_struct_anal.BASE_PATH, 'ckpts', "MuQ-large-msd-iter")
@@ -73,7 +73,6 @@ class VADConfig:
     fmax: int = 4000
 
 
-
 class AutoPrepSong:
     def __init__(self, config: DictConfig = None, **kwargs):
         # Support both config object and kwargs
@@ -83,7 +82,7 @@ class AutoPrepSong:
             self.config = OmegaConf.create(kwargs)
         
         # Get basic paths from config
-        self.input_jsonl = self.config.get("input_jsonl", None)
+        self.input_jsonl = self.config.get("input_jsonl", None) # SHOULD be the scp of json_files
         self.output_dir = self.config.get("output_dir", None)
         
         # Get do_xxx flags from config (default to True if corresponding init_args exist)
@@ -97,8 +96,6 @@ class AutoPrepSong:
         # Get start_idx and chunk_size from config
         self.start_idx = self.config.get("start_idx", 0)
         self.chunk_size = self.config.get("chunk_size", None)
-
-        self.merge_seconds = self.config.get("merge_seconds", None)
 
         # Load audio-lyric pairs from jsonl file
         if self.input_jsonl is not None:
@@ -133,7 +130,7 @@ class AutoPrepSong:
         
         Each line in the jsonl file should be a JSON object with keys:
         - audio_path: path to the audio file
-        - lyric_path: path to the lyric file
+        - segments: lyric setments
         
         Args:
             start_idx: Starting index (0-based) for processing. Default is 0.
@@ -160,13 +157,13 @@ class AutoPrepSong:
                     break
                 
                 try:
-                    record = json.loads(line)
+                    record = json.load(open(line, 'r'))
                     audio_path = record.get("audio_path")
-                    lyric_path = record.get("lyric_path")
-                    if audio_path and lyric_path:
-                        pairs.append({"audio_path": audio_path, "lyric_path": lyric_path})
+                    segments = record.get("segments")
+                    if audio_path and segments:
+                        pairs.append({"audio_path": audio_path, "segments": segments})
                     else:
-                        print(f"[Warning] Missing audio_path or lyric_path: {line}")
+                        print(f"[Warning] Missing audio_path or segments: {line}")
                 except json.JSONDecodeError as e:
                     print(f"[Warning] Invalid JSON line: {line}, error: {e}")
                 
@@ -407,6 +404,7 @@ class AutoPrepSong:
 
 
     def init_separator(self):
+
         torch.backends.cudnn.benchmark = True
 
         self.separator_model, self.separate_config = run_separation.get_model_from_config(self.separator_init_args.model_type, self.separator_init_args.config_path)
@@ -496,6 +494,7 @@ class AutoPrepSong:
         """Process all audio files, each audio goes through all steps before moving to the next."""
         # Create output directories
         if self.do_songformer and self.songformer_init_args is not None:
+            raise NotImplementedError("Not yet debugged!")
             os.makedirs(self.songformer_init_args.output_dir, exist_ok=True)
         if self.do_separation and self.separator_init_args is not None:
             os.makedirs(self.separator_init_args.store_dir, exist_ok=True)
@@ -507,18 +506,18 @@ class AutoPrepSong:
         # Process each audio-lyric pair through all steps
         for pair in tqdm(self.audio_lyric_pairs, total=len(self.audio_lyric_pairs), desc="Processing"):
             try:
-                self.process(wav_path=pair["audio_path"], lrc_path=pair["lyric_path"], output_dir=self.output_dir)
+                self.process(wav_path=pair["audio_path"], segments=pair["segments"], output_dir=self.output_dir)
             except Exception as e:
                 print(f"[Error] Failed to process {pair['audio_path']}: {e}")
                 continue
 
-    def process(self, wav_path: str, lrc_path: str = None, output_dir: str = None):
+    def process(self, wav_path: str, segments: str = None, output_dir: str = None):
         """
         Process a single audio file through all steps: struct_analyze -> separate -> vad -> combine
         
         Args:
             wav_path: Path to the audio file (string)
-            lrc_path: Path to the lyric file
+            segments: Path to the lyric file
             output_dir: Output directory for final results
         """
         basename = Path(wav_path).name
@@ -535,6 +534,7 @@ class AutoPrepSong:
 
         # Step 1: Structural Analysis
         if self.do_songformer and self.songformer_init_args is not None:
+            raise NotImplementedError("Not yet debugged!")
             struct_output = Path(self.songformer_init_args.output_dir) / f"{basename}.json"
             if self.resume and struct_output.exists():
                 print(f"  [1/4] Skipping structural analysis (exists)...")
@@ -552,7 +552,7 @@ class AutoPrepSong:
                 self.separate(wav_path)
 
         # Step 3: VAD Processing
-        if self.do_vad and self.vad_init_args is not None and lrc_path is not None:
+        if self.do_vad and self.vad_init_args is not None and segments is not None:
             vad_output = Path(self.vad_init_args.output_dir) / f"{basename}.json"
             if self.resume and vad_output.exists():
                 print(f"  [3/4] Skipping VAD processing (exists)...")
@@ -560,118 +560,16 @@ class AutoPrepSong:
                 print(f"  [3/4] Running VAD processing...")
                 vad_kwargs = OmegaConf.to_container(self.vad_init_args, resolve=True)
                 vad_kwargs.pop("output_dir", None)
-                result = run_sentence_vad.process(
+                result = run_sentence_vad.process_with_seg(
                     audio_path=Path(self.separator_init_args.store_dir) / basename / f"vocals.{codec}",
-                    lyric_path=lrc_path,
+                    segments=segments,
                     vad_kwargs=vad_kwargs,
                 )
                 json.dump(result, open(vad_output, "w", encoding="utf-8"), indent=4, ensure_ascii=False)
 
-        # Step 4: Combine Results
-        if output_dir is not None and lrc_path is not None:
-            print(f"  [4/4] Combining results...")
-            self.combine_single_result(wav_path=wav_path, lrc_path=lrc_path, output_dir=output_dir)
+
 
         print(f"  Done: {wav_path}")
-
-    def combine_single_result(self, wav_path: str, lrc_path: str, output_dir: str):
-        """Combine results for a single audio file."""
-        struct_dir = Path(self.songformer_init_args.output_dir)
-        sep_dir = Path(self.separator_init_args.store_dir)
-        vad_dir = Path(self.vad_init_args.output_dir)
-        output_dir = Path(output_dir)
-        output_dir.mkdir(parents=True, exist_ok=True)
-
-        basename = Path(wav_path).name
-        struct_json = json.load(open(struct_dir / f"{basename}.json", 'r', encoding='utf-8'))
-        total_len = AudioDecoder(wav_path).metadata.duration_seconds
-
-        segments, extra, wrong_t = [], [], []
-        vad_json = json.load(open(vad_dir / f"{basename}.json", 'r', encoding='utf-8'))
-
-        max_sec, filtered_vad_json = 0, []
-        for idx, seg in enumerate(vad_json):
-            if seg['end'] - seg['start'] < 0.3:
-                extra.append(seg)
-                continue
-
-            if seg['start'] < max_sec - 10: # translation case, give up the rest
-                wrong_t += vad_json[idx:]
-                break
-            elif max_sec < max_sec - 3:
-                raise NotImplementedError("又是一点没见过的小惊喜")
-
-
-            if seg['start'] - max_sec >= 1.5:
-                filtered_vad_json.append({
-                    "text": "",
-                    "start": max_sec,
-                    "end": seg['start'],
-                })
-            elif filtered_vad_json != []:
-                # merge with previous segment
-                while filtered_vad_json != [] and seg['start'] < filtered_vad_json[-1]['start']:
-                    wrong_t.append(filtered_vad_json.pop(-1))
-
-                if filtered_vad_json != []:
-                    filtered_vad_json[-1]['end'] = seg['start']
-
-
-            max_sec = seg['end']
-            filtered_vad_json.append(seg.copy())
-
-        if total_len - max_sec >= 1.5:
-            filtered_vad_json.append({
-                "text": "",
-                "start": max_sec,
-                "end": total_len,
-            })
-        elif filtered_vad_json != []:
-            filtered_vad_json[-1]['end'] = total_len
-
-        struct_ptr = 0
-        for seg in filtered_vad_json:
-            while seg['start'] >= struct_json[struct_ptr]['end']:
-                struct_ptr += 1
-                if struct_ptr >= len(struct_json):
-                    raise ValueError(f"Structure pointer out of range {seg}, {struct_json}")
-
-            overlaped_ptr = 0
-            overlaps = {}
-            while struct_ptr + overlaped_ptr < len(struct_json) and struct_json[struct_ptr + overlaped_ptr]['start'] < seg['end']:
-                overlap_len = min(seg['end'], struct_json[struct_ptr + overlaped_ptr]['end']) - max(seg['start'], struct_json[struct_ptr + overlaped_ptr]['start'])
-                assert overlap_len > 0, f"No overlap found between {seg} and {struct_json[struct_ptr + overlaped_ptr]}"
-                overlaps[struct_json[struct_ptr + overlaped_ptr]['label']] = overlaps.get(struct_json[struct_ptr + overlaped_ptr]['label'], 0) + overlap_len
-                overlaped_ptr += 1
-            most_possible_label = max(overlaps.items(), key=lambda x: x[1])[0]
-
-            segments.append({
-                "text": f"[{most_possible_label}] " + seg['text'],
-                "start": seg['start'],
-                "end": seg['end'],
-                "speaker": None,
-            })
-
-        # 根据 separator 配置决定后缀
-        codec = 'flac' if getattr(self.separator_init_args, 'flac_file', True) else 'wav'
-        
-        if self.merge_seconds is not None:
-            segments = merge_segments(segments, self.merge_seconds)
-
-        output_json = {
-            "audio_path": str(Path(wav_path).resolve()),
-            "audio_length": total_len,
-            "audio_vocal_path": str((sep_dir / basename / f"vocals.{codec}").resolve()),
-            "audio_bgm_path": str((sep_dir / basename / f"instrumental.{codec}").resolve()),
-            "structures": struct_json,
-            "segments": segments,
-            "info": {"extra_segments": extra, "wrong_time_segments": wrong_t}
-        }
-        json.dump(output_json,
-                  open(output_dir / f"{basename}.json", 'w', encoding='utf-8'),
-                  ensure_ascii=False, indent=4)
-
-
 
 
 def parse_args():

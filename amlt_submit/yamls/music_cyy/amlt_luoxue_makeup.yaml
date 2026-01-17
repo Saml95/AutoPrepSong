@@ -31,10 +31,10 @@ storage:
     storage_account_name: conversationhubhot
     container_name: unilm
 
-search:
-  job_template:
-    name: data_preprocessing_{start_idx}
-    sku: 40G1-A100
+
+jobs:
+  - name: data_preprocessing_b4
+    sku: 40G1-A100  #[#nodes]x [memory-size]G{#gpus} [gpu-types] [IB] [NVLink/xGMI] [CUDA]@[regions]
     # sla_tier: Premium
     # sla_tier: Standard
     sla_tier: Standard
@@ -45,9 +45,14 @@ search:
       # - sleep infinity
       - python3 scripts/autoprep_song_jwyu.py
         --config_path config/amlt_basic.yaml
-        --data_yaml amlt_submit/data_yaml/luoxue_20251226.yaml
-        --start_idx {start_idx}
-        --chunk_size {chunk_size}
+        --data_yaml amlt_submit/data_yaml/luoxue_batch4.yaml
+        --start_idx 31320
+        --chunk_size 261
+      - python3 scripts/autoprep_song_jwyu.py
+        --config_path config/amlt_basic.yaml
+        --data_yaml amlt_submit/data_yaml/luoxue_batch4.yaml
+        --start_idx 31581
+        --chunk_size 261
     tags: [Project_Name:Speech, Experiment:Speech_Processing]
     submit_args:
       env:
@@ -55,14 +60,26 @@ search:
         MKL_NUM_THREADS: 1
         OMP_NUM_THREADS: 1
         MKL_SERVICE_FORCE_INTEL: 1
-  type: grid
-  max_trials: 64
-  params:
-    - name: start_idx
-      spec: discrete
-      values: range(000_000, 9245, 145)
-    - name: chunk_size
-      spec: discrete
-      values: [
-        145
-      ]
+
+  - name: data_preprocessing_b5
+    sku: 40G1-A100  #[#nodes]x [memory-size]G{#gpus} [gpu-types] [IB] [NVLink/xGMI] [CUDA]@[regions]
+    # sla_tier: Premium
+    # sla_tier: Standard
+    sla_tier: Standard
+    priority: High
+    identity: managed
+    process_count_per_node: 1
+    command:
+      # - sleep infinity
+      - python3 scripts/autoprep_song_jwyu.py
+        --config_path config/amlt_basic.yaml
+        --data_yaml amlt_submit/data_yaml/luoxue_batch5.yaml
+        --start_idx 10680
+        --chunk_size 178
+    tags: [Project_Name:Speech, Experiment:Speech_Processing]
+    submit_args:
+      env:
+        NCCL_DEBUG: INFO
+        MKL_NUM_THREADS: 1
+        OMP_NUM_THREADS: 1
+        MKL_SERVICE_FORCE_INTEL: 1
