@@ -353,7 +353,9 @@ def process_json_data(json_data: Dict) -> Tuple[str, List[Dict], List[str], Dict
             'end_time': end_time,
             'text': seg.get('text', ''),
             'speaker': seg.get("speaker", seg.get('speaker_id', seg.get('umap_segment_labels', 'Unknown'))),
-            'vad_anomaly':seg.get('vad_anomaly', False),
+            'vad_anomaly': seg.get('vad_anomaly', False),
+            'reset_end_time': seg.get('reset_end_time', False),
+            'is_duration_ill': seg.get('is_duration_ill', False),
         }
         
         processed_segments.append(segment_info)
@@ -474,14 +476,40 @@ def generate_html_output(
     .segment-item-warning {
         margin-bottom: 20px;
         padding: 15px;
-        border: 2px solid var(--border-color);
+        border: 2px solid #fbc02d;
         border-radius: 8px;
-        background-color: var(--bg-secondary);
+        background-color: #fffde7;
         transition: all 0.3s ease;
     }
     .segment-item-warning:hover {
         box-shadow: 0 4px 12px var(--shadow);
-        border-color: #fbc02d;
+        border-color: #f9a825;
+    }
+
+    .segment-item-duratio {
+        margin-bottom: 20px;
+        padding: 15px;
+        border: 2px solid #fbc02d;
+        border-radius: 8px;
+        background-color: #fffde7;
+        transition: all 0.3s ease;
+    }
+    .segment-item-duration-ill:hover {
+        box-shadow: 0 4px 12px var(--shadow);
+        border-color: #f9a825;
+    }
+
+    .segment-item-reset {
+        margin-bottom: 20px;
+        padding: 15px;
+        border: 2px solid #e53935;
+        border-radius: 8px;
+        background-color: #ffebee;
+        transition: all 0.3s ease;
+    }
+    .segment-item-reset:hover {
+        box-shadow: 0 4px 12px var(--shadow);
+        border-color: #c62828;
     }
 
     .segment-header {
@@ -531,6 +559,26 @@ def generate_html_output(
         padding: 10px;
         background-color: var(--bg-primary);
         border-left: 3px solid #fbc02d;
+        border-radius: 4px;
+        color: var(--text-primary);
+        line-height: 1.6;
+    }
+
+    .segment-text-duration-ill {
+        margin: 10px 0;
+        padding: 10px;
+        background-color: var(--bg-primary);
+        border-left: 3px solid #fbc02d;
+        border-radius: 4px;
+        color: var(--text-primary);
+        line-height: 1.6;
+    }
+
+    .segment-text-reset {
+        margin: 10px 0;
+        padding: 10px;
+        background-color: var(--bg-primary);
+        border-left: 3px solid #e53935;
         border-radius: 4px;
         color: var(--text-primary);
         line-height: 1.6;
@@ -591,14 +639,42 @@ def generate_html_output(
         
         # Get speaker without mapping
         speaker = segment['speaker']
-        if segment['vad_anomaly']:
+        
+        # Determine segment style based on flags
+        # - is_duration_ill=True 且 reset_end_time=True → 红色 (reset)
+        # - is_duration_ill=True 且 reset_end_time=False → 黄色 (duration_ill)
+        # - vad_anomaly=True → 黄色 (warning)
+        has_reset = segment.get('reset_end_time', False)
+        has_duration_ill = segment.get('is_duration_ill', False)
+        has_vad_anomaly = segment.get('vad_anomaly', False)
+        
+        if has_duration_ill and has_reset:
+            # is_ill=True 且 reset=True → 红色
+            html += f"<div class='segment-item-reset'>"
+            segment_style = 'reset'
+        elif has_duration_ill:
+            # is_ill=True 但未 reset → 黄色
+            html += f"<div class='segment-item-duration-ill'>"
+            segment_style = 'duration_ill'
+        elif has_vad_anomaly:
             html += f"<div class='segment-item-warning'>"
+            segment_style = 'warning'
         else:
             html += f"<div class='segment-item'>"
+            segment_style = 'normal'
         
         # Header
         html += "<div class='segment-header'>"
-        html += f"<h4 class='segment-title'>🔊 Segment {i}</h4>"
+        # Add status indicators to title
+        status_icons = []
+        if has_reset:
+            status_icons.append('🔴 Reset')
+        if has_duration_ill:
+            status_icons.append('🟡 DurationIll')
+        if has_vad_anomaly:
+            status_icons.append('⚠️ VAD')
+        status_str = f" ({', '.join(status_icons)})" if status_icons else ""
+        html += f"<h4 class='segment-title'>🔊 Segment {i}{status_str}</h4>"
         html += "</div>"
         
         # Info
@@ -615,7 +691,11 @@ def generate_html_output(
         
         # Text content
         text = segment['text'].strip()
-        if segment['vad_anomaly']:
+        if segment_style == 'reset':
+            html += f"<div class='segment-text-reset'>{text if text else '<i>No text</i>'}</div>"
+        elif segment_style == 'duration_ill':
+            html += f"<div class='segment-text-duration-ill'>{text if text else '<i>No text</i>'}</div>"
+        elif segment_style == 'warning':
             html += f"<div class='segment-text-warning'>{text if text else '<i>No text</i>'}</div>"
         else:
             html += f"<div class='segment-text'>{text if text else '<i>No text</i>'}</div>"
