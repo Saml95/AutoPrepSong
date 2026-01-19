@@ -95,7 +95,7 @@ def build_singer_dict(scp_path: str) -> Dict[str, Dict]:
 def main():
     parser = argparse.ArgumentParser(description="处理歌曲文件名，构建 singer dict")
     parser.add_argument("--scp", type=str,
-                        default="/home/jianweiyu/exp/music/luoxue/json_group_lyric_gp5_v1_processed_v2/processed.scp",
+                        default="/mnt/conversationhubhot/yaoyaochang/speech/data/music/yan/meta/json_group_v1/luoxue_batch1-5_merged_5s.v1.scp",
                         help="processed.scp 文件路径")
     parser.add_argument("--output", type=str,
                         default="/home/jianweiyu/exp/music/luoxue/json_group_lyric_gp5_v1_processed_v2/singer_dict.json",
@@ -136,37 +136,73 @@ def main():
         print(f"  {i+1}. {singer}: {len(info['json_files'])} 首 (singer_number={info['singer_number']}, singers={info['singer_list']})")
     
     # 保存 singer_dict
-    output_path = Path(args.output)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    # output_path = Path(args.output)
+    # output_path.parent.mkdir(parents=True, exist_ok=True)
     
-    with open(output_path, 'w', encoding='utf-8') as f:
-        json.dump(singer_dict, f, ensure_ascii=False, indent=2)
+    # with open(output_path, 'w', encoding='utf-8') as f:
+    #     json.dump(singer_dict, f, ensure_ascii=False, indent=2)
     
-    print(f"\nsinger_dict 已保存: {output_path}")
+    # print(f"\nsinger_dict 已保存: {output_path}")
     
     # 保存单人歌手和多人歌手的 scp 文件
     single_singer_files = []
     multi_singer_files = []
     
+    # for singer_str, info in singer_dict.items():
+    #     if info['singer_number'] == 1:
+    #         single_singer_files.extend(info['json_files'])
+    #     elif info['singer_number'] <1:
+    #         continue
+    #     else:
+    #         multi_singer_files.extend(info['json_files'])
+
     for singer_str, info in singer_dict.items():
         if info['singer_number'] == 1:
             single_singer_files.extend(info['json_files'])
+        elif info['singer_number'] <1:
+            continue
         else:
             multi_singer_files.extend(info['json_files'])
     
-    # 保存单人歌手 scp
-    single_scp_path = output_path.parent / "single_singer.scp"
-    with open(single_scp_path, 'w', encoding='utf-8') as f:
+
+
+    filered_scp_path = args.scp.replace(".scp", ".remove_0_speaker.scp")
+    assert filered_scp_path != args.scp, "输出文件路径不能与输入文件路径相同"
+
+    with open(filered_scp_path, 'w', encoding='utf-8') as f:
+        for json_file in single_singer_files + multi_singer_files:
+            f.write(f"{json_file}\n")
+    print(f"去除无歌手文件后的 scp 已保存: {filered_scp_path} ({len(single_singer_files) + len(multi_singer_files)} 首)")
+
+
+    filered_single_scp_path = args.scp.replace(".scp", ".1_singer.scp")
+    assert filered_single_scp_path != args.scp, "输出文件路径不能与输入文件路径相同"
+    with open(filered_single_scp_path, 'w', encoding='utf-8') as f:
         for json_file in single_singer_files:
             f.write(f"{json_file}\n")
-    print(f"单人歌手 scp 已保存: {single_scp_path} ({len(single_singer_files)} 首)")
-    
-    # 保存多人歌手 scp
-    multi_scp_path = output_path.parent / "multi_singer.scp"
-    with open(multi_scp_path, 'w', encoding='utf-8') as f:
+    print(f"单人歌手文件 scp 已保存: {filered_single_scp_path} ({len(single_singer_files)} 首)")
+
+    filered_multi_scp_path = args.scp.replace(".scp", ".multi_singer.scp")
+    assert filered_multi_scp_path != args.scp, "输出文件路径不能与输入文件路径相同"
+    with open(filered_multi_scp_path, 'w', encoding='utf-8') as f:
         for json_file in multi_singer_files:
             f.write(f"{json_file}\n")
-    print(f"多人歌手 scp 已保存: {multi_scp_path} ({len(multi_singer_files)} 首)")
+    print(f"多人歌手文件 scp 已保存: {filered_multi_scp_path} ({len(multi_singer_files)} 首)")
+
+
+    # # 保存单人歌手 scp
+    # single_scp_path = output_path.parent / "single_singer.scp"
+    # with open(single_scp_path, 'w', encoding='utf-8') as f:
+    #     for json_file in single_singer_files:
+    #         f.write(f"{json_file}\n")
+    # print(f"单人歌手 scp 已保存: {single_scp_path} ({len(single_singer_files)} 首)")
+    
+    # # 保存多人歌手 scp
+    # multi_scp_path = output_path.parent / "multi_singer.scp"
+    # with open(multi_scp_path, 'w', encoding='utf-8') as f:
+    #     for json_file in multi_singer_files:
+    #         f.write(f"{json_file}\n")
+    # print(f"多人歌手 scp 已保存: {multi_scp_path} ({len(multi_singer_files)} 首)")
 
 
 if __name__ == "__main__":

@@ -615,7 +615,7 @@ def get_structure_label(text: str) -> Optional[str]:
     return None
 
 
-def merge_segments(segments: List[Dict[str, Any]], chunk_size: float = 10.0, min_chunk_size: float = 3.0) -> List[Dict[str, Any]]:
+def merge_segments(segments: List[Dict[str, Any]], chunk_size: float = 10.0, min_chunk_size: float = 3.0, merge_mode: int = 3) -> List[Dict[str, Any]]:
     """
     合并 segments，遵循以下规则：
     1. chunk_size 为 merge 的最大可接受长度（默认 10s）
@@ -642,8 +642,10 @@ def merge_segments(segments: List[Dict[str, Any]], chunk_size: float = 10.0, min
     current_chunk = None
     
     for seg in segments:
-        is_lyric = seg.get('is_lyric', True)
         text = seg.get('text', '')
+        # 根据 text 去掉结构标签后是否为空来判断是否有歌词
+        text_content = get_text_without_brackets(text)
+        has_lyric = bool(text_content.strip())
         structure_label = get_structure_label(text)
         start = seg.get('start', 0.0)
         end = seg.get('end', 0.0)
@@ -651,12 +653,13 @@ def merge_segments(segments: List[Dict[str, Any]], chunk_size: float = 10.0, min
         if current_chunk is None:
             # 第一个 segment，直接作为当前 chunk
             current_chunk = seg.copy()
-            current_chunk['_is_lyric'] = is_lyric
+            current_chunk['_has_lyric'] = has_lyric
+            current_chunk['is_lyric'] = has_lyric  # 更新 is_lyric 字段
             current_chunk['_structure_label'] = structure_label
             current_chunk['_merged_count'] = 1
             continue
         
-        current_is_lyric = current_chunk.get('_is_lyric', True)
+        current_has_lyric = current_chunk.get('_has_lyric', True)
         current_label = current_chunk.get('_structure_label')
         current_start = current_chunk.get('start', 0.0)
         current_end = current_chunk.get('end', 0.0)
@@ -665,16 +668,16 @@ def merge_segments(segments: List[Dict[str, Any]], chunk_size: float = 10.0, min
         # 判断是否可以合并
         can_merge = False
         
-        if not current_is_lyric:
+        if not current_has_lyric:
             # 当前 chunk 是无歌词片段
-            if not is_lyric:
+            if not has_lyric:
                 # 下一个也是无歌词，检查结构标签是否相同
                 if structure_label == current_label or structure_label is None or current_label is None:
                     can_merge = True
             # 遇到歌词片段或结构标签切换，停止合并无歌词片段
         else:
             # 当前 chunk 是歌词片段
-            if is_lyric:
+            if has_lyric:
                 # 下一个也是歌词片段，检查结构标签和时长
                 if structure_label == current_label:
                     # 结构标签相同
@@ -696,11 +699,11 @@ def merge_segments(segments: List[Dict[str, Any]], chunk_size: float = 10.0, min
             # 合并文本：保留当前的结构标签，追加新的歌词内容
             if new_text_content:
                 # 如果新 segment 有实际歌词内容，追加
-                if current_is_lyric and is_lyric:
-                    # 两个都是歌词，合并歌词部分
+                if current_has_lyric and has_lyric:
+                    # 两个都是歌词，合并歌词部分（用换行符隔开）
                     current_text_content = get_text_without_brackets(current_text)
                     bracket_part = keep_only_brackets(current_text)
-                    current_chunk['text'] = f"{bracket_part} {current_text_content} {new_text_content}".strip()
+                    current_chunk['text'] = f"{bracket_part} {current_text_content}\t{new_text_content}".strip()
                 else:
                     # 保留当前文本
                     pass
@@ -709,48 +712,83 @@ def merge_segments(segments: List[Dict[str, Any]], chunk_size: float = 10.0, min
             current_chunk['_merged_count'] = current_chunk.get('_merged_count', 1) + 1
             
             # 如果合并后变成有歌词的，更新状态
-            if is_lyric and not current_is_lyric:
-                current_chunk['_is_lyric'] = True
+            if has_lyric and not current_has_lyric:
+                current_chunk['_has_lyric'] = True
                 current_chunk['is_lyric'] = True
         else:
             # 不能合并，保存当前 chunk 并开始新的
             # 检查当前 seg 是否太短需要合并到前一个
             seg_duration = end - start
-            if is_lyric and merged and seg_duration < min_chunk_size:
+            if has_lyric and merged and seg_duration < min_chunk_size:
                 prev_chunk = merged[-1]
-                prev_is_lyric = prev_chunk.get('_is_lyric', prev_chunk.get('is_lyric', True))
+                prev_has_lyric = prev_chunk.get('_has_lyric', bool(get_text_without_brackets(prev_chunk.get('text', '')).strip()))
                 prev_label = prev_chunk.get('_structure_label', get_structure_label(prev_chunk.get('text', '')))
                 
-                if prev_is_lyric and structure_label == prev_label:
-                    # 尝试合并到前一个 chunk
-                    prev_start = prev_chunk.get('start', 0.0)
-                    prev_end = prev_chunk.get('end', 0.0)
-                    new_total_duration = end - prev_start
+                # 只有当 current_chunk 已经被保存（即 prev_chunk 就是刚保存的 current_chunk 的前一个），
+                # 或者 current_chunk 和 prev_chunk 是同一个结构标签时，才考虑合并到 prev
+                # 否则应该先保存 current_chunk，再把当前 seg 作为新的 current_chunk
+                if prev_has_lyric and structure_label == prev_label:
+                    # 检查 current_chunk 是否与 prev_chunk 首尾相接
+                    # 如果不是，说明 current_chunk 还没保存，需要先保存
+                    current_chunk_start = current_chunk.get('start', 0.0)
+                    prev_chunk_end = prev_chunk.get('end', 0.0)
                     
-                    # 如果合并后不超过 chunk_size * 1.5，则合并
-                    if new_total_duration <= chunk_size * 1.5:
-                        prev_text = prev_chunk.get('text', '')
-                        new_text_content = get_text_without_brackets(text)
-                        if new_text_content:
-                            prev_text_content = get_text_without_brackets(prev_text)
-                            bracket_part = keep_only_brackets(prev_text)
-                            merged[-1]['text'] = f"{bracket_part} {prev_text_content} {new_text_content}".strip()
-                        merged[-1]['end'] = end
-                        merged[-1]['_merged_count'] = merged[-1].get('_merged_count', 1) + 1
-                        continue
+                    if abs(current_chunk_start - prev_chunk_end) > 0.01:
+                        # current_chunk 还没保存，先保存它
+                        merged.append(current_chunk)
+                    
+                    # 现在尝试合并到新的 merged[-1]
+                    prev_chunk = merged[-1]
+                    prev_has_lyric = prev_chunk.get('_has_lyric', bool(get_text_without_brackets(prev_chunk.get('text', '')).strip()))
+                    prev_label = prev_chunk.get('_structure_label', get_structure_label(prev_chunk.get('text', '')))
+                    
+                    if prev_has_lyric and structure_label == prev_label:
+                        prev_start = prev_chunk.get('start', 0.0)
+                        new_total_duration = end - prev_start
+                        
+                        # 如果合并后不超过 chunk_size * 1.5，则合并
+                        if new_total_duration <= chunk_size * 1.5:
+                            prev_text = prev_chunk.get('text', '')
+                            new_text_content = get_text_without_brackets(text)
+                            if new_text_content:
+                                prev_text_content = get_text_without_brackets(prev_text)
+                                bracket_part = keep_only_brackets(prev_text)
+                                merged[-1]['text'] = f"{bracket_part} {prev_text_content}\t{new_text_content}".strip()
+                            merged[-1]['end'] = end
+                            merged[-1]['_merged_count'] = merged[-1].get('_merged_count', 1) + 1
+                            # 开始新的 current_chunk（下一个 seg 会初始化）
+                            current_chunk = None
+                            continue
             
             # 保存当前 chunk
             merged.append(current_chunk)
             
             # 开始新的 chunk
             current_chunk = seg.copy()
-            current_chunk['_is_lyric'] = is_lyric
+            current_chunk['_has_lyric'] = has_lyric
+            current_chunk['is_lyric'] = has_lyric  # 更新 is_lyric 字段
             current_chunk['_structure_label'] = structure_label
             current_chunk['_merged_count'] = 1
     
     # 保存最后一个 chunk
     if current_chunk is not None:
         merged.append(current_chunk)
+    
+    # merge_mode=1: 只执行第一遍，清理临时字段后返回
+    if merge_mode == 1:
+        result = []
+        for seg in merged:
+            new_seg = seg.copy()
+            new_seg.pop('_has_lyric', None)
+            new_seg.pop('_structure_label', None)
+            merged_count = new_seg.pop('_merged_count', 1)
+            new_seg['merged_count'] = merged_count
+            # 根据 text 内容判断是否有歌词
+            text_content = get_text_without_brackets(new_seg.get('text', ''))
+            has_lyric = bool(text_content.strip())
+            new_seg['is_lyric'] = has_lyric
+            result.append(new_seg)
+        return result
     
     # 第二遍：处理时间调整（歌词片段向前延伸 0.5s）
     EXTEND_TIME = 0.5
@@ -760,39 +798,95 @@ def merge_segments(segments: List[Dict[str, Any]], chunk_size: float = 10.0, min
         new_seg = seg.copy()
         
         # 清理临时字段
-        new_seg.pop('_is_lyric', None)
+        new_seg.pop('_has_lyric', None)
         new_seg.pop('_structure_label', None)
         merged_count = new_seg.pop('_merged_count', 1)
         new_seg['merged_count'] = merged_count
         
-        is_lyric = seg.get('is_lyric', True)
+        # 根据 text 内容判断是否有歌词
+        text_content = get_text_without_brackets(new_seg.get('text', ''))
+        has_lyric = bool(text_content.strip())
+        new_seg['is_lyric'] = has_lyric  # 确保 is_lyric 与实际内容一致
         
-        if is_lyric and i > 0:
+        if has_lyric and i > 0:
             # 当前是歌词片段，检查上一个片段是否是无歌词
             prev_seg = final_merged[-1]
-            prev_is_lyric = prev_seg.get('is_lyric', True)
+            prev_has_lyric = prev_seg.get('is_lyric', True)
             
-            if not prev_is_lyric:
+            if not prev_has_lyric:
                 # 上一个片段没有歌词，当前歌词片段开头向前延伸 0.5s
                 current_start = new_seg.get('start', 0.0)
                 prev_end = prev_seg.get('end', 0.0)
+                prev_start = prev_seg.get('start', 0.0)
                 
                 # 确保不会超过上一个片段的开始时间
-                new_start = max(current_start - EXTEND_TIME, prev_seg.get('start', 0.0))
+                new_start = max(current_start - EXTEND_TIME, prev_start)
                 
                 if new_start < current_start:
                     new_seg['start'] = new_start
                     new_seg['extended_start'] = True
                     
-                    # 上一个片段的结尾减去延伸的时间
-                    actual_extend = current_start - new_start
-                    final_merged[-1]['end'] = prev_end - actual_extend
-                    final_merged[-1]['trimmed_end'] = True
+                    # 上一个非歌词片段的结尾设为歌词片段的新开始时间
+                    # 确保 segments 首尾相接
+                    new_prev_end = new_start
+                    
+                    # 如果上一个片段 trim 后时长 <= 0，删除该片段
+                    if new_prev_end <= prev_start:
+                        # 删除上一个无效片段，当前歌词片段直接从 prev_start 开始
+                        new_seg['start'] = prev_start
+                        final_merged.pop()
+                    else:
+                        final_merged[-1]['end'] = new_prev_end
+                        final_merged[-1]['trimmed_end'] = True
         
         final_merged.append(new_seg)
     
+    # merge_mode=2: 只执行到第二遍，返回 final_merged
+    if merge_mode == 2:
+        return final_merged
+    
+    # 第三遍：处理两个歌词片段之间小于2s的非歌词片段，从中间分开merge进前后歌词片段
+    SHORT_NON_LYRIC_THRESHOLD = 2.0
+    result_merged = []
+    
+    for i, seg in enumerate(final_merged):
+        seg_start = seg.get('start', 0.0)
+        seg_end = seg.get('end', 0.0)
+        seg_duration = seg_end - seg_start
+        has_lyric = seg.get('is_lyric', True)
+        
+        # 跳过无效片段（start >= end，可能是第二遍 trim 导致的）
+        if seg_duration <= 0:
+            continue
+        
+        if not has_lyric and seg_duration < SHORT_NON_LYRIC_THRESHOLD:
+            # 当前是小于2s的非歌词片段
+            # 检查前后是否都是歌词片段
+            prev_is_lyric = result_merged[-1].get('is_lyric', False) if result_merged else False
+            next_is_lyric = final_merged[i+1].get('is_lyric', False) if i + 1 < len(final_merged) else False
+            
+            if prev_is_lyric and next_is_lyric:
+                # 前后都是歌词片段，从中间分开，当前非歌词片段将被移除
+                mid_point = (seg_start + seg_end) / 2
+                
+                # 上一个歌词片段的 end 延伸到 mid_point
+                result_merged[-1]['end'] = mid_point
+                result_merged[-1]['merged_next_non_lyric'] = True
+                
+                # 下一个歌词片段的 start 改为 mid_point
+                # 注意：需要复制一份再修改，避免影响 final_merged 中后续的判断
+                final_merged[i+1] = final_merged[i+1].copy()
+                final_merged[i+1]['start'] = mid_point
+                final_merged[i+1]['extended_start'] = True
+                
+                # 当前非歌词片段被合并到前后歌词片段中，不添加到结果（相当于删除）
+                continue
+        
+        # 复制一份添加到结果，避免后续修改影响
+        result_merged.append(seg.copy())
+    
     # 重新计算统计字段
-    for seg in final_merged:
+    for seg in result_merged:
         start = seg.get('start', 0.0)
         end = seg.get('end', 0.0)
         duration = end - start
@@ -811,24 +905,46 @@ def merge_segments(segments: List[Dict[str, Any]], chunk_size: float = 10.0, min
             if lyric_count > 0 and duration > 0:
                 seg['average_duration'] = duration / lyric_count
     
-    return final_merged
+    return result_merged
 
 
-def merge_json_data(data: Dict[str, Any], chunk_size: float = 10.0) -> Dict[str, Any]:
+def merge_json_data(data: Dict[str, Any], chunk_size: float = 10.0, json_path: str = None, merge_mode: int = 3) -> Dict[str, Any]:
     """
     对 JSON 数据进行 merge 处理
     
     Args:
         data: 输入的 JSON 数据
         chunk_size: merge 的最大可接受长度（秒）
+        json_path: JSON 文件路径（用于 warning 输出）
+        merge_mode: merge 模式，1=只第一遍，2=到第二遍，3=完整三遍（默认）
     
     Returns:
         merge 后的 JSON 数据
     """
     segments = data.get('segments', [])
+    audio_length = data.get('audio_length', float('inf'))
     
     # 执行 merge
-    merged_segments = merge_segments(segments, chunk_size=chunk_size)
+    merged_segments = merge_segments(segments, chunk_size=chunk_size, merge_mode=merge_mode)
+    
+    # 检查 segment 首尾相接
+    has_gap = False
+    for i in range(1, len(merged_segments)):
+        prev_end = merged_segments[i-1].get('end', 0.0)
+        curr_start = merged_segments[i].get('start', 0.0)
+        # 允许小于 0.01 的误差
+        if abs(curr_start - prev_end) > 0.01:
+            has_gap = True
+            if json_path:
+                print(f"[WARNING] Segment gap detected: seg[{i-1}].end={prev_end:.3f} != seg[{i}].start={curr_start:.3f}, path: {json_path}")
+            break
+    
+    # 检查最后一个 segment 的 end time
+    if merged_segments:
+        last_end = merged_segments[-1].get('end', 0.0)
+        if last_end > audio_length + 0.01:  # 允许小误差
+            if json_path:
+                print(f"[WARNING] Last segment end ({last_end:.3f}) > audio_length ({audio_length:.3f}), path: {json_path}")
     
     # 创建新的数据
     new_data = data.copy()
@@ -841,7 +957,7 @@ def merge_json_data(data: Dict[str, Any], chunk_size: float = 10.0) -> Dict[str,
     return new_data
 
 
-def process_merge_from_scp(scp_path: str, output_dir: str, chunk_size: float = 10.0):
+def process_merge_from_scp(scp_path: str, output_dir: str, chunk_size: float = 10.0, merge_mode: int = 3):
     """
     从 scp 文件读取 JSON 文件路径，进行 merge 处理并保存
     
@@ -849,6 +965,7 @@ def process_merge_from_scp(scp_path: str, output_dir: str, chunk_size: float = 1
         scp_path: scp 文件路径（每行格式：path\tseg_num\till_cnt\tratio）
         output_dir: 输出目录
         chunk_size: merge 的最大可接受长度（秒）
+        merge_mode: merge 模式，1=只第一遍，2=到第二遍，3=完整三遍（默认）
     """
     scp_path = Path(scp_path)
     output_dir = Path(output_dir)
@@ -864,6 +981,7 @@ def process_merge_from_scp(scp_path: str, output_dir: str, chunk_size: float = 1
     
     print(f"Found {len(json_paths)} JSON files to merge")
     print(f"Chunk size: {chunk_size}s")
+    print(f"Merge mode: {merge_mode}")
     print(f"Output dir: {output_dir}")
     
     merged_stats = []
@@ -879,7 +997,7 @@ def process_merge_from_scp(scp_path: str, output_dir: str, chunk_size: float = 1
                 data = json.load(f)
             
             # 执行 merge
-            merged_data = merge_json_data(data, chunk_size=chunk_size)
+            merged_data = merge_json_data(data, chunk_size=chunk_size, json_path=json_path, merge_mode=merge_mode)
             
             # 构建输出路径：XXX.merged.CHUNKSIZE.json
             json_path_obj = Path(json_path)
@@ -913,11 +1031,11 @@ def process_merge_from_scp(scp_path: str, output_dir: str, chunk_size: float = 1
             import traceback
             traceback.print_exc()
     
-    # 保存 merged.scp
+    # 保存 merged.scp（只保留 JSON 路径）
     merged_scp_path = output_dir / f"merged.{int(chunk_size)}s.scp"
     with open(merged_scp_path, 'w', encoding='utf-8') as f:
         for s in merged_stats:
-            f.write(f"{s['output_path']}\t{s['original_count']}\t{s['merged_count']}\n")
+            f.write(f"{s['output_path']}\n")
     
     print(f"\nMerge 完成: {len(merged_stats)} 个文件")
     print(f"Merged scp 已保存: {merged_scp_path}")
@@ -953,6 +1071,8 @@ if __name__ == "__main__":
                         help="merge 输出目录（默认使用 output_dir）")
     parser.add_argument("--chunk_size", type=float, default=10.0,
                         help="merge 的最大 chunk 长度（秒），默认 10s")
+    parser.add_argument("--merge_mode", type=int, default=3, choices=[1, 2, 3],
+                        help="merge 模式: 1=只第一遍, 2=到第二遍, 3=完整三遍(默认)")
     
     args = parser.parse_args()
     
@@ -978,8 +1098,9 @@ if __name__ == "__main__":
         print(f"输入 scp: {merge_scp}")
         print(f"输出目录: {merge_output_dir}")
         print(f"Chunk size: {args.chunk_size}s")
+        print(f"Merge mode: {args.merge_mode}")
         
-        process_merge_from_scp(str(merge_scp), str(merge_output_dir), chunk_size=args.chunk_size)
+        process_merge_from_scp(str(merge_scp), str(merge_output_dir), chunk_size=args.chunk_size, merge_mode=args.merge_mode)
     else:
         json_scp = args.scp
         output_base_dir = Path(args.output_dir)
@@ -1039,7 +1160,7 @@ if __name__ == "__main__":
                 for seg in processed_data.get('segments', []):
                     if seg.get('is_duration_ill', False) and not seg.get('reset_end_time', False):
                         has_unresolved_ill = True
-                        break
+                        break\
                 
                 all_stats.append({
                     'json_path': json_path,
