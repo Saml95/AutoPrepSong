@@ -311,7 +311,8 @@ def process_json_data(json_data: Dict) -> Tuple[str, List[Dict], List[str], Dict
     metadata = {}
     
     # Get audio path
-    audio_path = json_data.get('audio_path', '')
+    # audio_path = json_data.get('audio_path', '')
+    audio_path = json_data.get('audio_vocal_path', "")
     if not audio_path:
         warnings.append("⚠️ No audio_path found in JSON")
         return '', [], warnings, metadata
