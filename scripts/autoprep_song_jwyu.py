@@ -19,10 +19,9 @@ import soundfile as sf
 import run_separation
 import run_struct_anal
 import run_sentence_vad
+from run_merge import merge_segments
 
 scipy.inf = np.inf
-
-
 
 
 @dataclass
@@ -30,11 +29,12 @@ class SongFormerConfig:
     output_dir: str = MISSING
     model: str = MISSING
     config_path: str = MISSING
-    
+
     no_rule_post_processing: bool = False
     win_size: int = 420
     hop_size: int = 420
     num_classes: int = 128
+
     CHECKPOINT_PATH: str = os.path.join(run_struct_anal.BASE_PATH, "ckpts", "SongFormer.safetensors")
     MUSICFM_HOME_PATH : str = os.path.join(run_struct_anal.BASE_PATH, 'ckpts', "MusicFM")
     MUQ_PATH : str = os.path.join(run_struct_anal.BASE_PATH, 'ckpts', "MuQ-large-msd-iter")
@@ -73,6 +73,7 @@ class VADConfig:
     fmax: int = 4000
 
 
+
 class AutoPrepSong:
     def __init__(self, config: DictConfig = None, **kwargs):
         # Support both config object and kwargs
@@ -92,10 +93,14 @@ class AutoPrepSong:
         
         # Resume option: skip if output already exists
         self.resume = self.config.get("resume", True)
+
+        self.file_split_chunk = self.config.get("split_chunk", None)
         
         # Get start_idx and chunk_size from config
         self.start_idx = self.config.get("start_idx", 0)
         self.chunk_size = self.config.get("chunk_size", None)
+
+        self.merge_seconds = self.config.get("merge_seconds", None)
 
         # Load audio-lyric pairs from jsonl file
         if self.input_jsonl is not None:
@@ -224,7 +229,7 @@ class AutoPrepSong:
 
 
     @torch.no_grad()
-    def struct_analyze(self, audio_path):
+    def struct_analyze(self, audio_path, output_path):
         """Run inference on the input audio"""
         num_classes = self.songformer_init_args.num_classes
 
@@ -392,9 +397,10 @@ class AutoPrepSong:
                         }
                     )
                 
+                Path(output_path).parent.mkdir(exist_ok=True, parents=True)
                 json.dump(
                     msa_json,
-                    open(os.path.join(self.songformer_init_args.output_dir, f"{Path(audio_path).name}.json"), "w"),
+                    open(output_path, "w"),
                     indent=4,
                     ensure_ascii=False,
                 )
@@ -404,7 +410,6 @@ class AutoPrepSong:
 
 
     def init_separator(self):
-
         torch.backends.cudnn.benchmark = True
 
         self.separator_model, self.separate_config = run_separation.get_model_from_config(self.separator_init_args.model_type, self.separator_init_args.config_path)
@@ -421,9 +426,8 @@ class AutoPrepSong:
 
 
 
-    def separate(self, path):
+    def separate(self, path, output_dir):
         instruments = run_separation.prefer_target_instrument(self.separate_config)[:]
-        os.makedirs(self.separator_init_args.store_dir, exist_ok=True)
 
         print(f"Processing track: {path}")
         try:
@@ -477,7 +481,6 @@ class AutoPrepSong:
                 model=os.path.splitext(os.path.basename(self.separator_init_args.start_check_point))[0]
             )
 
-            output_dir = os.path.join(self.separator_init_args.store_dir, *dirnames)
             os.makedirs(output_dir, exist_ok=True)
 
             output_path = os.path.join(output_dir, f"{fname}.{codec}")
@@ -503,14 +506,16 @@ class AutoPrepSong:
             os.makedirs(self.output_dir, exist_ok=True)
 
         # Process each audio-lyric pair through all steps
-        for pair in tqdm(self.audio_lyric_pairs, total=len(self.audio_lyric_pairs), desc="Processing"):
+        for idx_offset, pair in tqdm(enumerate(self.audio_lyric_pairs), total=len(self.audio_lyric_pairs), desc="Processing"):
             try:
-                self.process(wav_path=pair["audio_path"], lrc_path=pair["lyric_path"], output_dir=self.output_dir)
+                if self.file_split_chunk is not None:
+                    store_chunk_id = (self.start_idx + idx_offset) // self.file_split_chunk
+                self.process(wav_path=pair["audio_path"], lrc_path=pair["lyric_path"], output_dir=self.output_dir, store_chunk_id=store_chunk_id)
             except Exception as e:
                 print(f"[Error] Failed to process {pair['audio_path']}: {e}")
                 continue
 
-    def process(self, wav_path: str, lrc_path: str = None, output_dir: str = None):
+    def process(self, wav_path: str, lrc_path: str = None, output_dir: str = None, store_chunk_id: int = None):
         """
         Process a single audio file through all steps: struct_analyze -> separate -> vad -> combine
         
@@ -519,7 +524,10 @@ class AutoPrepSong:
             lrc_path: Path to the lyric file
             output_dir: Output directory for final results
         """
-        basename = Path(wav_path).name
+        if store_chunk_id is None:
+            basename = Path(wav_path).name
+        else:
+            basename = f"{store_chunk_id}/{Path(wav_path).name}"
         codec = 'flac' if getattr(self.separator_init_args, 'flac_file', True) else 'wav'
         
         # Check if final output already exists (resume mode)
@@ -542,12 +550,12 @@ class AutoPrepSong:
 
         # Step 2: Source Separation
         if self.do_separation and self.separator_init_args is not None:
-            sep_output = Path(self.separator_init_args.store_dir) / basename / f"vocals.{codec}"
-            if self.resume and sep_output.exists():
+            sep_output = Path(self.separator_init_args.store_dir) / basename 
+            if self.resume and (sep_output / f"vocals.{codec}").exists():
                 print(f"  [2/4] Skipping source separation (exists)...")
             else:
                 print(f"  [2/4] Running source separation...")
-                self.separate(wav_path)
+                self.separate(wav_path, sep_output)
 
         # Step 3: VAD Processing
         if self.do_vad and self.vad_init_args is not None and lrc_path is not None:
@@ -563,6 +571,7 @@ class AutoPrepSong:
                     lyric_path=lrc_path,
                     vad_kwargs=vad_kwargs,
                 )
+                vad_output.parent.mkdir(exist_ok=True)
                 json.dump(result, open(vad_output, "w", encoding="utf-8"), indent=4, ensure_ascii=False)
 
         # Step 4: Combine Results
@@ -572,15 +581,18 @@ class AutoPrepSong:
 
         print(f"  Done: {wav_path}")
 
-    def combine_single_result(self, wav_path: str, lrc_path: str, output_dir: str):
+    def combine_single_result(self, wav_path: str, lrc_path: str, output_dir: str, store_chunk_id: int = None):
         """Combine results for a single audio file."""
         struct_dir = Path(self.songformer_init_args.output_dir)
         sep_dir = Path(self.separator_init_args.store_dir)
         vad_dir = Path(self.vad_init_args.output_dir)
         output_dir = Path(output_dir)
-        output_dir.mkdir(parents=True, exist_ok=True)
 
-        basename = Path(wav_path).name
+        if store_chunk_id is None:
+            basename = Path(wav_path).name
+        else:
+            basename = f"{store_chunk_id}/{Path(wav_path).name}"
+
         struct_json = json.load(open(struct_dir / f"{basename}.json", 'r', encoding='utf-8'))
         total_len = AudioDecoder(wav_path).metadata.duration_seconds
 
@@ -653,6 +665,9 @@ class AutoPrepSong:
         # 根据 separator 配置决定后缀
         codec = 'flac' if getattr(self.separator_init_args, 'flac_file', True) else 'wav'
         
+        if self.merge_seconds is not None:
+            segments = merge_segments(segments, self.merge_seconds)
+
         output_json = {
             "audio_path": str(Path(wav_path).resolve()),
             "audio_length": total_len,
@@ -662,9 +677,12 @@ class AutoPrepSong:
             "segments": segments,
             "info": {"extra_segments": extra, "wrong_time_segments": wrong_t}
         }
+        (output_dir / f"{basename}.json").mkdir(parents=True, exist_ok=True)
         json.dump(output_json,
                   open(output_dir / f"{basename}.json", 'w', encoding='utf-8'),
                   ensure_ascii=False, indent=4)
+
+
 
 
 def parse_args():

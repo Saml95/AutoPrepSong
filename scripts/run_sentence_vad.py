@@ -142,6 +142,7 @@ def process(audio_path, lyric_path, vad_kwargs={}):
             "text": lyric_starts[i]['text'],
             "start": vad_start + lyric_starts[i]['start'],
             "end": vad_end + lyric_starts[i]['start'],
+            "vad_res": str(vad_mask.astype(int).tolist())
         })
     return result
 

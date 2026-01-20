@@ -353,7 +353,7 @@ def process_json_data(json_data: Dict) -> Tuple[str, List[Dict], List[str], Dict
             'end_time': end_time,
             'text': seg.get('text', ''),
             'speaker': seg.get("speaker", seg.get('speaker_id', seg.get('umap_segment_labels', 'Unknown'))),
-            'vad_anomaly':seg.get('vad_anomaly', False),
+            'vad_anomaly':seg.get('vad_anomaly', False) or seg.get('is_duration_ill', False),
         }
         
         processed_segments.append(segment_info)

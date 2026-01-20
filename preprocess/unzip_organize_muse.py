@@ -55,7 +55,7 @@ def process_jsonl_files(root_dir, json_out_dir):
     jsonl_files = glob(os.path.join(root_dir, "*_*.jsonl"))
     audio_index = build_audio_index(root_dir)
 
-    cnt = 0
+    cnt, wrong_seg_cnt, wrong_end_cnt = 0, 0, 0
     for jsonl_path in jsonl_files:
         print(f"[PROCESS] {jsonl_path}")
         with open(jsonl_path, "r", encoding="utf-8") as fin:
@@ -64,6 +64,7 @@ def process_jsonl_files(root_dir, json_out_dir):
                 song_id = obj["song_id"]
                 old_audio_path = obj["audio_path"]
                 audio_name = os.path.basename(old_audio_path)
+                total_len = AudioDecoder(audio_index[audio_name]).metadata.duration_seconds
 
                 if audio_name not in audio_index:
                     print(f"[WARN] audio not found: {audio_name}")
@@ -76,15 +77,25 @@ def process_jsonl_files(root_dir, json_out_dir):
                     "song_id": song_id,
                     "audio_path": os.path.join("/mnt/conversationhubhot/yaoyaochang/speech/data/music/muse20260112/bolshyC_Muse", \
                                             os.path.relpath(audio_index[audio_name], root_dir)), #audio_index[audio_name],
-                    "audio_length": AudioDecoder(audio_index[audio_name]).metadata.duration_seconds,
-                    "segments": [{'text': f"[{re.subn(r"\d+", "", i['section'].lower())[0].strip()}] {i['text']}", 'start': i['startS'], 'end': i['endS'], 'speaker': None} for i in obj['sections']],
+                    "audio_length": total_len,
+                    "segments": [{'text': f"[{re.subn(r"\d+", "", i['section'].lower())[0].strip()}] {i['text']}", 'start': i['startS'], 'end': i['endS'], 'speaker': None} for i in obj['sections'] if i['startS'] < total_len],
                     "info": json.dumps(obj)
                 }
+
+                if len(new_obj['segments']) < len(obj['sections']):
+                    wrong_seg_cnt += 1
+                
+                if new_obj['segments'][-1] > total_len:
+                    wrong_end_cnt += 1
+
+
                 fout.write(json.dumps(new_obj, ensure_ascii=False, indent=2))
                 fout.close()
                 cnt += 1
 
     print(f"[DONE] saved {cnt} entries to {json_out_dir}")
+    print(f"wrong segment: {wrong_seg_cnt} # of segs | {wrong_end_cnt} time of ends")
+
 
 
 if __name__ == "__main__":
