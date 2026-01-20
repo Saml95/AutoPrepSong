@@ -17,12 +17,14 @@ import torch.nn as nn
 
 # Using the embedded version of Python can also correctly import the utils module.
 current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(os.path.join(current_dir, 'thirdparty/music_Source_Separation_Training'))
+sys.path.insert(0, os.path.join(current_dir, 'thirdparty'))
+sys.path.insert(0, os.path.join(current_dir, 'thirdparty/music_Source_Separation_Training'))
 
-from utils.audio_utils import normalize_audio, denormalize_audio, draw_spectrogram
-from utils.settings import get_model_from_config, validate_sndfile_subtype
-from utils.model_utils import demix
-from utils.model_utils import prefer_target_instrument, apply_tta, load_start_checkpoint
+
+from music_Source_Separation_Training.utils.audio_utils import normalize_audio, denormalize_audio, draw_spectrogram
+from music_Source_Separation_Training.utils.settings import get_model_from_config, validate_sndfile_subtype
+from music_Source_Separation_Training.utils.model_utils import demix
+from music_Source_Separation_Training.utils.model_utils import prefer_target_instrument, apply_tta, load_start_checkpoint
 
 import warnings
 

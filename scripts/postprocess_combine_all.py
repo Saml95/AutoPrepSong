@@ -3,6 +3,7 @@ from pathlib import Path
 import json
 from torchcodec.decoders import AudioDecoder
 
+raise NotImplementedError("Out of Date")
 if __name__=='__main__':
     lrc2wav_path, struct_dir, sep_dir, vad_dir, output_dir = sys.argv[1:]
     struct_dir, sep_dir, vad_dir, output_dir = Path(struct_dir), Path(sep_dir), Path(vad_dir), Path(output_dir)

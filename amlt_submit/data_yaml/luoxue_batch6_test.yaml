@@ -1,0 +1,3 @@
+input_jsonl: local/test.jsonl
+output_base_dir: local/test222
+split_chunk: 2
