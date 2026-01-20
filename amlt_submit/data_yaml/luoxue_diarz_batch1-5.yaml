@@ -1,0 +1,2 @@
+input_jsonl:  /mnt/conversationhubhot/yaoyaochang/speech/data/music/yan/meta/json_group_v1/luoxue_batch1-5_merged_5s.v1.remove_0_speaker.remove_live.jsonl
+output_base_dir: /mnt/conversationhubhot/yaoyaochang/speech/data/music/yan/meta/json_group_v1/diariz_v1/

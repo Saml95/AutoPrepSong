@@ -11,7 +11,8 @@ sudo docker rm $name
 # container="nvcr.io/nvidia/pytorch:24.07-py3"
 # container="nvcr.io/nvidia/pytorch:24.10-py3"
 # container="nvcr.io/nvidia/pytorch:25.11-py3"
-container="nvcr.io/nvidia/pytorch:25.11-py3-amlt-AutoPrepSongV2"
+# container="nvcr.io/nvidia/pytorch:25.11-py3-amlt-AutoPrepSongV2"
+container="nvcr.io/nvidia/pytorch:25.11-py3-amlt-AutoPrepSongV2-diarize"
 
 sudo docker run -d --privileged  --name $name \
     --net=host  --ipc=host  --shm-size 900g --shm-size 300g --gpus all \

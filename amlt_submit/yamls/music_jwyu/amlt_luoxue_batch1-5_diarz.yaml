@@ -1,0 +1,68 @@
+description: AutoPrepSongV2
+
+target:
+  service: sing
+  # name: msrresrchlabbasic
+  # name: msrresrchbasicvc
+  name: palisades33
+  workspace_name: workspace_genai
+  
+environment:
+  # image: pytorch:24.10-py3
+  # image: pytorch:25.11-py3-amlt
+  image: pytorch:25.11-py3-amlt-AutoPrepSongV2-diarize
+  registry: workspacegenaiacr.azurecr.io
+  setup:
+  - sudo chmod -R 777 /usr/local/lib/python3.12/dist-packages/  # 添加这行
+  # - sudo chmod -R 777 /usr/local/
+  # - export PATH=$$PATH:/home/aiscuser/.local/bin
+  # - sudo apt update
+  # - pip install -r requirements.txt 
+  # - pip uninstall flash-attn -y
+  # - sudo apt-get install ffmpeg -y
+
+code:
+  local_dir: $CONFIG_DIR/../../../
+  
+storage:
+  conversationhub:
+    storage_account_name: conversationhub
+    container_name: unilm
+  conversationhubhot:
+    storage_account_name: conversationhubhot
+    container_name: unilm
+
+search:
+  job_template:
+    name: data_preprocessing_{start_idx}
+    sku: 40G1-A100
+    sla_tier: Premium
+    # sla_tier: Standard
+    # sla_tier: Standard
+    priority: High
+    identity: managed
+    process_count_per_node: 1
+    command:
+      # - sleep infinity
+      - python3 scripts/autoprep_diarize_lyric.py
+        --data_yaml amlt_submit/data_yaml/luoxue_diarz_batch1-5.yaml
+        --start_idx {start_idx}
+        --chunk_size {chunk_size}
+    tags: [Project_Name:Speech, Experiment:Speech_Processing]
+    submit_args:
+      env:
+        NCCL_DEBUG: INFO
+        MKL_NUM_THREADS: 1
+        OMP_NUM_THREADS: 1
+        MKL_SERVICE_FORCE_INTEL: 1
+  type: grid
+  max_trials: 32
+  params:
+    - name: start_idx
+      spec: discrete
+      values: range(000_000, 78450, 2452)
+    - name: chunk_size
+      spec: discrete
+      values: [
+        2452
+      ]
