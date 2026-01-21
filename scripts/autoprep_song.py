@@ -19,6 +19,7 @@ import soundfile as sf
 import run_separation
 import run_struct_anal
 import run_sentence_vad
+from load_lrc import parse_lrc_with_timestamps
 from run_merge import merge_segments
 from process_lyrics import process_single_segment_list
 
@@ -544,6 +545,14 @@ class AutoPrepSong:
         
         print(f"Processing: {wav_path}")
 
+        other_info = {}
+        # Step 1: Remove MetaInfo
+        unsorted_lyric_with_starts, wrong_segments = parse_lrc_with_timestamps(lrc_path)
+        other_info["perhaps_translation"] = wrong_segments
+        # TODO Here should have a GPT check
+        lyric_with_starts = unsorted_lyric_with_starts
+        lyric_with_starts.sort(key=lambda x:x['start'])
+
         # Step 1: Structural Analysis
         if self.do_songformer and self.songformer_init_args is not None:
             struct_output = Path(self.songformer_init_args.output_dir) / f"{basename}.json"
@@ -573,7 +582,7 @@ class AutoPrepSong:
                 vad_kwargs.pop("output_dir", None)
                 result = run_sentence_vad.process(
                     audio_path=Path(self.separator_init_args.store_dir) / basename / f"vocals.{codec}",
-                    lyric_path=lrc_path,
+                    lyric_starts=lyric_with_starts,
                     vad_kwargs=vad_kwargs,
                 )
                 vad_output.parent.mkdir(exist_ok=True)
@@ -582,11 +591,11 @@ class AutoPrepSong:
         # Step 4: Combine Results
         if output_dir is not None and lrc_path is not None:
             print(f"  [4/4] Combining results...")
-            self.combine_single_result(wav_path=wav_path, lrc_path=lrc_path, output_dir=output_dir, store_chunk_id=store_chunk_id)
+            self.combine_single_result(wav_path=wav_path, output_dir=output_dir, store_chunk_id=store_chunk_id, other_info=other_info)
 
         print(f"  Done: {wav_path}")
 
-    def combine_single_result(self, wav_path: str, lrc_path: str, output_dir: str, store_chunk_id: int = None):
+    def combine_single_result(self, wav_path: str, output_dir: str, store_chunk_id: int = None, other_info: dict = {}):
         """Combine results for a single audio file."""
         struct_dir = Path(self.songformer_init_args.output_dir)
         sep_dir = Path(self.separator_init_args.store_dir)
@@ -620,7 +629,7 @@ class AutoPrepSong:
             elif filtered_vad_json != []:
                 # merge with previous segment
                 while filtered_vad_json != [] and seg['start'] < filtered_vad_json[-1]['start']:
-                    wrong_t.append(filtered_vad_json.pop(-1))
+                    wrong_t.append(filtered_vad_json.pop(-1)) #TODO 应该前面VAD之前就check完 
 
                 if filtered_vad_json != []:
                     filtered_vad_json[-1]['end'] = seg['start']
@@ -671,6 +680,7 @@ class AutoPrepSong:
         if self.merge_seconds is not None:
             segments = merge_segments(segments, self.merge_seconds)
 
+        other_info.update({"extra_segments": extra, "wrong_time_segments": wrong_t})
         output_json = {
             "audio_path": str(Path(wav_path).resolve()),
             "audio_length": total_len,
@@ -678,7 +688,7 @@ class AutoPrepSong:
             "audio_bgm_path": str((sep_dir / basename / f"instrumental.{codec}").resolve()),
             "structures": struct_json,
             "segments": segments,
-            "info": {"extra_segments": extra, "wrong_time_segments": wrong_t}
+            "info": other_info
         }
         (output_dir / f"{basename}.json").parent.mkdir(parents=True, exist_ok=True)
         json.dump(output_json,

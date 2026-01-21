@@ -79,8 +79,7 @@ def energy_vad_from_start(
 
 
 
-def process(audio_path, lyric_path, vad_kwargs={}):
-    lyric_starts = parse_lrc_with_timestamps(lyric_path)
+def process(audio_path, lyric_starts, vad_kwargs={}):
 
     audio, sr = librosa.load(audio_path, sr=None, mono=True)
     # print(audio.shape)
@@ -135,7 +134,8 @@ if __name__ == "__main__":
             continue
         lrc_path, audio_path = f.split('\t')
         basename = Path(audio_path).name
-        result = process(sep_dir / basename / "vocals.wav", lrc_path)
+        lyric_starts = parse_lrc_with_timestamps(sep_dir / basename / "vocals.wav")
+        result = process(lyric_starts, lrc_path)
         with open(str(output_dir/ basename) + ".json", "w", encoding="utf-8") as fout:
             json.dump(result, fout, ensure_ascii=False, indent=2)   
 

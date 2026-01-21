@@ -3,8 +3,13 @@ import re
 
 time_pattern = re.compile(r"\[(\d+):(\d+(?:\.\d+)?)\]")
 
+# 不太能救得了的黑名单
+qustion_lrc_records = ['/mnt/conversationhubhot/yaoyaochang/speech/data/music/yan/luoxue_batch6/Duca - Brand-New World.lrc',# 错拍对唱
+                        "/mnt/conversationhubhot/yaoyaochang/speech/data/music/yan/luoxue_batch6/Avril Lavigne - Hello Kitty.lrc",
+]
 def parse_lrc_with_timestamps(path):
-    lyrics = []
+    # 输出的歌词unsorted / unfiltered
+    lyrics, strange_lyrics = [], []
     with open(path, "r", encoding="utf-8") as f:
         has_multiple, has_translate = False, False
         first_occur_time = []
@@ -13,6 +18,8 @@ def parse_lrc_with_timestamps(path):
 
             times = time_pattern.findall(line)
             text = time_pattern.sub("", line).strip()
+            if text == '':
+                continue # empty lines may have strange usage(eg. occupying position for translation)
 
             times = [int(mm) * 60 + float(ss) for mm, ss in times]
 
@@ -27,7 +34,6 @@ def parse_lrc_with_timestamps(path):
                 first_occur_time.append(min(times))
                 
 
-
     has_translate, translate_ptr = detect_restart_with_threshold(first_occur_time, 10)
 
     if has_multiple or has_translate:
@@ -35,9 +41,11 @@ def parse_lrc_with_timestamps(path):
         pass
 
     if has_translate:
+        strange_lyrics +=[lyrics[translate_ptr:]]
         lyrics = lyrics[:translate_ptr]
-    lyrics.sort(key=lambda x:x['start'])
-    return lyrics
+        
+
+    return lyrics, strange_lyrics
 
 
 def detect_restart_with_threshold(nums, reset_threshold=10):
@@ -48,6 +56,10 @@ def detect_restart_with_threshold(nums, reset_threshold=10):
         if nums[i] < nums[i - 1] - reset_threshold:
             return True, i
     return False, None
+
+
+
+
 
 # def parse_lrc_with_timestamps(lrc_path):
 #     """
