@@ -50,8 +50,10 @@ TARGET="https://conversationhubhot.blob.core.windows.net/unilm/yaoyaochang/speec
 #     azcopy sync "https://conversationhubhot.blob.core.windows.net/unilm/jianweiyu/datasets/vibevoice/sft/$dataset/data20251230/json/$(${blob_cmd} token -a http://135.149.113.42:5950/api -k CsOG9vleDpcc-AqQcTmJlKw4zxrR3aMsWTvTSGv1GVY= -n conversationhubhot -c unilm)" "https://conversationhubhot.blob.core.windows.net/unilm/jianweiyu/datasets/vibevoice/sft/combine_multilingual_100h/$lang/$(${blob_cmd} token -a http://135.149.113.42:5950/api -k CsOG9vleDpcc-AqQcTmJlKw4zxrR3aMsWTvTSGv1GVY= -n conversationhubhot -c unilm)" --recursive 
 # done
 
-TARGET=https://conversationhubhot.blob.core.windows.net/unilm/yaoyaochang/speech/data/music/yan/meta/json_group_v1
-INPUT="/home/jianweiyu/exp/music/luoxue"
+
+dataset="diariz_v1_15s"
+TARGET=https://conversationhubhot.blob.core.windows.net/unilm/yaoyaochang/speech/data/music/yan/meta/json_group_v1/${dataset}
+INPUT="/home/jianweiyu/exp/music/luoxue/${dataset}"
 
 AZCOPY_BUFFER_GB=300 AZCOPY_CONCURRENCY_VALUE=AUTO AZCOPY_CONCURRENT_FILES=1024 azcopy sync \
     "${INPUT}" \

@@ -85,12 +85,47 @@ TARGET=`pwd`/exp/ray_eval_date/
 
 
 
-INPUT="https://conversationhubhot.blob.core.windows.net/unilm/yaoyaochang/speech/data/music/yan/meta/luoxue_20251226/vibevoice-asr/"
-TARGET="/home/jianwei/music/luoxue_20251226/"
+# INPUT="https://conversationhubhot.blob.core.windows.net/unilm/yaoyaochang/speech/data/music/yan/meta/luoxue_20251226/vibevoice-asr/"
+# TARGET="/home/jianwei/music/luoxue_20251226/"
+# blob_cluster=conversationhubhot
+
+# AZCOPY_BUFFER_GB=300 AZCOPY_CONCURRENCY_VALUE=AUTO AZCOPY_CONCURRENT_FILES=1024 \
+#     azcopy copy \
+#     "${INPUT}$(${blob_cmd}   token -a http://135.149.113.42:5950/api -k CsOG9vleDpcc-AqQcTmJlKw4zxrR3aMsWTvTSGv1GVY= -n ${blob_cluster} -c unilm )"\
+#     "${TARGET}" \
+#     --recursive --log-level=WARNING
+
+# INPUT="https://conversationhubhot.blob.core.windows.net/unilm/yaoyaochang/speech/data/music/yan/meta/json_group_v1/diariz_v1/"
+# TARGET="/home/jianwei/music/luoxue/diariz_v1/"
+
+# INPUT="https://conversationhubhot.blob.core.windows.net/unilm/jianweiyu/datasets/vibevoice/sft/fisher_long/data20251225/gpt_sbjw/json_group_fix_punctuated_post"
+# TARGET="/home/jianwei/speech/fisher_long/data20251225/gpt_sbjw/json_group_fix_punctuated_post"
+# mkdir -p ${TARGET}
+
+
+# INPUT="https://conversationhubhot.blob.core.windows.net/unilm/yaoyaochang/speech/data/raw_disk/20251229_4/APY190411001_1351小时普通话自然对话语音数据/gpt/json_fix_number/"
+# TARGET="/home/jianwei/speech/APY190411001_1351小时普通话自然对话语音数据/gpt/json_fix_number/"
+# mkdir -p ${TARGET}
+
+
+# INPUT="https://conversationhubhot.blob.core.windows.net/unilm/jianweiyu/datasets/vibevoice/sft/fisher_long/data20251225/json"
+# TARGET="/home/jianwei/speech/fisher_long/data20251225/json"
+
+INPUT="https://conversationhubhot.blob.core.windows.net/unilm/jianweiyu/tts_3rd/tts_data_3party/tts_data/ouput/split_json/"
+TARGET="/home/jianwei/speech/tts_3rd/tts_data_3party/tts_data/ouput/split_json/"
+
+
+
+
+mkdir -p ${TARGET}
+
+
+
+
 blob_cluster=conversationhubhot
 
 AZCOPY_BUFFER_GB=300 AZCOPY_CONCURRENCY_VALUE=AUTO AZCOPY_CONCURRENT_FILES=1024 \
-    azcopy copy \
+    azcopy sync \
     "${INPUT}$(${blob_cmd}   token -a http://135.149.113.42:5950/api -k CsOG9vleDpcc-AqQcTmJlKw4zxrR3aMsWTvTSGv1GVY= -n ${blob_cluster} -c unilm )"\
     "${TARGET}" \
     --recursive --log-level=WARNING

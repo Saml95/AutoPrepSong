@@ -615,7 +615,7 @@ def get_structure_label(text: str) -> Optional[str]:
     return None
 
 
-def merge_segments(segments: List[Dict[str, Any]], chunk_size: float = 10.0, min_chunk_size: float = 3.0, merge_mode: int = 3) -> List[Dict[str, Any]]:
+def merge_segments(segments: List[Dict[str, Any]], chunk_size: float = 10.0, min_chunk_size: float = 3.0, merge_mode: int = 3, is_has_speaker: bool = False) -> List[Dict[str, Any]]:
     """
     合并 segments，遵循以下规则：
     1. chunk_size 为 merge 的最大可接受长度（默认 10s）
@@ -631,15 +631,31 @@ def merge_segments(segments: List[Dict[str, Any]], chunk_size: float = 10.0, min
         segments: 输入的 segment 列表
         chunk_size: merge 的最大可接受长度（秒）
         min_chunk_size: 最小 chunk 长度（秒），低于此值会尝试与前一个合并
+        merge_mode: merge 模式，1=只第一遍，2=到第二遍，3=完整三遍，4=完整三遍+speaker检查
+        is_has_speaker: 是否检查 speaker 字段，为 True 时相邻片段 speaker 不同且不为 None 则不合并
     
     Returns:
         合并后的 segment 列表
     """
+    # mode 4 等价于 mode 3 + is_has_speaker=True
+    if merge_mode == 4:
+        merge_mode = 3
+        is_has_speaker = True
     if not segments:
         return []
     
     merged = []
     current_chunk = None
+    
+    def can_merge_by_speaker(current_speaker, next_speaker):
+        """检查两个 speaker 是否可以合并
+        只有当两个 speaker 都不为 None 且不相同时才返回 False
+        """
+        if not is_has_speaker:
+            return True
+        if current_speaker is None or next_speaker is None:
+            return True
+        return current_speaker == next_speaker
     
     for seg in segments:
         text = seg.get('text', '')
@@ -649,6 +665,7 @@ def merge_segments(segments: List[Dict[str, Any]], chunk_size: float = 10.0, min
         structure_label = get_structure_label(text)
         start = seg.get('start', 0.0)
         end = seg.get('end', 0.0)
+        speaker = seg.get('speaker')
         
         if current_chunk is None:
             # 第一个 segment，直接作为当前 chunk
@@ -656,11 +673,13 @@ def merge_segments(segments: List[Dict[str, Any]], chunk_size: float = 10.0, min
             current_chunk['_has_lyric'] = has_lyric
             current_chunk['is_lyric'] = has_lyric  # 更新 is_lyric 字段
             current_chunk['_structure_label'] = structure_label
+            current_chunk['_speaker'] = speaker
             current_chunk['_merged_count'] = 1
             continue
         
         current_has_lyric = current_chunk.get('_has_lyric', True)
         current_label = current_chunk.get('_structure_label')
+        current_speaker = current_chunk.get('_speaker')
         current_start = current_chunk.get('start', 0.0)
         current_end = current_chunk.get('end', 0.0)
         current_duration = current_end - current_start
@@ -668,19 +687,23 @@ def merge_segments(segments: List[Dict[str, Any]], chunk_size: float = 10.0, min
         # 判断是否可以合并
         can_merge = False
         
+        # 检查 speaker 是否允许合并
+        speaker_can_merge = can_merge_by_speaker(current_speaker, speaker)
+        
         if not current_has_lyric:
             # 当前 chunk 是无歌词片段
             if not has_lyric:
                 # 下一个也是无歌词，检查结构标签是否相同
                 if structure_label == current_label or structure_label is None or current_label is None:
-                    can_merge = True
+                    if speaker_can_merge:
+                        can_merge = True
             # 遇到歌词片段或结构标签切换，停止合并无歌词片段
         else:
             # 当前 chunk 是歌词片段
             if has_lyric:
                 # 下一个也是歌词片段，检查结构标签和时长
-                if structure_label == current_label:
-                    # 结构标签相同
+                if structure_label == current_label and speaker_can_merge:
+                    # 结构标签相同且 speaker 允许合并
                     new_duration = end - current_start
                     if new_duration <= chunk_size:
                         can_merge = True
@@ -715,6 +738,10 @@ def merge_segments(segments: List[Dict[str, Any]], chunk_size: float = 10.0, min
             if has_lyric and not current_has_lyric:
                 current_chunk['_has_lyric'] = True
                 current_chunk['is_lyric'] = True
+            # 更新 speaker（如果当前 chunk 的 speaker 为 None，使用新 seg 的 speaker）
+            if current_chunk.get('_speaker') is None and speaker is not None:
+                current_chunk['_speaker'] = speaker
+                current_chunk['speaker'] = speaker
         else:
             # 不能合并，保存当前 chunk 并开始新的
             # 检查当前 seg 是否太短需要合并到前一个
@@ -723,11 +750,13 @@ def merge_segments(segments: List[Dict[str, Any]], chunk_size: float = 10.0, min
                 prev_chunk = merged[-1]
                 prev_has_lyric = prev_chunk.get('_has_lyric', bool(get_text_without_brackets(prev_chunk.get('text', '')).strip()))
                 prev_label = prev_chunk.get('_structure_label', get_structure_label(prev_chunk.get('text', '')))
+                prev_speaker = prev_chunk.get('_speaker')
                 
                 # 只有当 current_chunk 已经被保存（即 prev_chunk 就是刚保存的 current_chunk 的前一个），
                 # 或者 current_chunk 和 prev_chunk 是同一个结构标签时，才考虑合并到 prev
                 # 否则应该先保存 current_chunk，再把当前 seg 作为新的 current_chunk
-                if prev_has_lyric and structure_label == prev_label:
+                prev_speaker_can_merge = can_merge_by_speaker(prev_speaker, speaker)
+                if prev_has_lyric and structure_label == prev_label and prev_speaker_can_merge:
                     # 检查 current_chunk 是否与 prev_chunk 首尾相接
                     # 如果不是，说明 current_chunk 还没保存，需要先保存
                     current_chunk_start = current_chunk.get('start', 0.0)
@@ -741,8 +770,10 @@ def merge_segments(segments: List[Dict[str, Any]], chunk_size: float = 10.0, min
                     prev_chunk = merged[-1]
                     prev_has_lyric = prev_chunk.get('_has_lyric', bool(get_text_without_brackets(prev_chunk.get('text', '')).strip()))
                     prev_label = prev_chunk.get('_structure_label', get_structure_label(prev_chunk.get('text', '')))
+                    prev_speaker = prev_chunk.get('_speaker')
+                    prev_speaker_can_merge = can_merge_by_speaker(prev_speaker, speaker)
                     
-                    if prev_has_lyric and structure_label == prev_label:
+                    if prev_has_lyric and structure_label == prev_label and prev_speaker_can_merge:
                         prev_start = prev_chunk.get('start', 0.0)
                         new_total_duration = end - prev_start
                         
@@ -768,6 +799,7 @@ def merge_segments(segments: List[Dict[str, Any]], chunk_size: float = 10.0, min
             current_chunk['_has_lyric'] = has_lyric
             current_chunk['is_lyric'] = has_lyric  # 更新 is_lyric 字段
             current_chunk['_structure_label'] = structure_label
+            current_chunk['_speaker'] = speaker
             current_chunk['_merged_count'] = 1
     
     # 保存最后一个 chunk
@@ -781,6 +813,7 @@ def merge_segments(segments: List[Dict[str, Any]], chunk_size: float = 10.0, min
             new_seg = seg.copy()
             new_seg.pop('_has_lyric', None)
             new_seg.pop('_structure_label', None)
+            new_seg.pop('_speaker', None)
             merged_count = new_seg.pop('_merged_count', 1)
             new_seg['merged_count'] = merged_count
             # 根据 text 内容判断是否有歌词
@@ -800,6 +833,7 @@ def merge_segments(segments: List[Dict[str, Any]], chunk_size: float = 10.0, min
         # 清理临时字段
         new_seg.pop('_has_lyric', None)
         new_seg.pop('_structure_label', None)
+        new_seg.pop('_speaker', None)
         merged_count = new_seg.pop('_merged_count', 1)
         new_seg['merged_count'] = merged_count
         
@@ -908,7 +942,7 @@ def merge_segments(segments: List[Dict[str, Any]], chunk_size: float = 10.0, min
     return result_merged
 
 
-def merge_json_data(data: Dict[str, Any], chunk_size: float = 10.0, json_path: str = None, merge_mode: int = 3) -> Dict[str, Any]:
+def merge_json_data(data: Dict[str, Any], chunk_size: float = 10.0, json_path: str = None, merge_mode: int = 3, is_has_speaker: bool = False) -> Dict[str, Any]:
     """
     对 JSON 数据进行 merge 处理
     
@@ -916,7 +950,8 @@ def merge_json_data(data: Dict[str, Any], chunk_size: float = 10.0, json_path: s
         data: 输入的 JSON 数据
         chunk_size: merge 的最大可接受长度（秒）
         json_path: JSON 文件路径（用于 warning 输出）
-        merge_mode: merge 模式，1=只第一遍，2=到第二遍，3=完整三遍（默认）
+        merge_mode: merge 模式，1=只第一遍，2=到第二遍，3=完整三遍，4=完整三遍+speaker检查
+        is_has_speaker: 是否检查 speaker 字段
     
     Returns:
         merge 后的 JSON 数据
@@ -925,7 +960,7 @@ def merge_json_data(data: Dict[str, Any], chunk_size: float = 10.0, json_path: s
     audio_length = data.get('audio_length', float('inf'))
     
     # 执行 merge
-    merged_segments = merge_segments(segments, chunk_size=chunk_size, merge_mode=merge_mode)
+    merged_segments = merge_segments(segments, chunk_size=chunk_size, merge_mode=merge_mode, is_has_speaker=is_has_speaker)
     
     # 检查 segment 首尾相接
     has_gap = False
@@ -957,7 +992,7 @@ def merge_json_data(data: Dict[str, Any], chunk_size: float = 10.0, json_path: s
     return new_data
 
 
-def process_merge_from_scp(scp_path: str, output_dir: str, chunk_size: float = 10.0, merge_mode: int = 3):
+def process_merge_from_scp(scp_path: str, output_dir: str, chunk_size: float = 10.0, merge_mode: int = 3, is_has_speaker: bool = False):
     """
     从 scp 文件读取 JSON 文件路径，进行 merge 处理并保存
     
@@ -965,7 +1000,8 @@ def process_merge_from_scp(scp_path: str, output_dir: str, chunk_size: float = 1
         scp_path: scp 文件路径（每行格式：path\tseg_num\till_cnt\tratio）
         output_dir: 输出目录
         chunk_size: merge 的最大可接受长度（秒）
-        merge_mode: merge 模式，1=只第一遍，2=到第二遍，3=完整三遍（默认）
+        merge_mode: merge 模式，1=只第一遍，2=到第二遍，3=完整三遍，4=完整三遍+speaker检查
+        is_has_speaker: 是否检查 speaker 字段
     """
     scp_path = Path(scp_path)
     output_dir = Path(output_dir)
@@ -982,6 +1018,7 @@ def process_merge_from_scp(scp_path: str, output_dir: str, chunk_size: float = 1
     print(f"Found {len(json_paths)} JSON files to merge")
     print(f"Chunk size: {chunk_size}s")
     print(f"Merge mode: {merge_mode}")
+    print(f"Is has speaker: {is_has_speaker}")
     print(f"Output dir: {output_dir}")
     
     merged_stats = []
@@ -997,7 +1034,7 @@ def process_merge_from_scp(scp_path: str, output_dir: str, chunk_size: float = 1
                 data = json.load(f)
             
             # 执行 merge
-            merged_data = merge_json_data(data, chunk_size=chunk_size, json_path=json_path, merge_mode=merge_mode)
+            merged_data = merge_json_data(data, chunk_size=chunk_size, json_path=json_path, merge_mode=merge_mode, is_has_speaker=is_has_speaker)
             
             # 构建输出路径：XXX.merged.CHUNKSIZE.json
             json_path_obj = Path(json_path)
@@ -1071,8 +1108,8 @@ if __name__ == "__main__":
                         help="merge 输出目录（默认使用 output_dir）")
     parser.add_argument("--chunk_size", type=float, default=10.0,
                         help="merge 的最大 chunk 长度（秒），默认 10s")
-    parser.add_argument("--merge_mode", type=int, default=3, choices=[1, 2, 3],
-                        help="merge 模式: 1=只第一遍, 2=到第二遍, 3=完整三遍(默认)")
+    parser.add_argument("--merge_mode", type=int, default=3, choices=[1, 2, 3, 4],
+                        help="merge 模式: 1=只第一遍, 2=到第二遍, 3=完整三遍(默认), 4=完整三遍+speaker检查")
     
     args = parser.parse_args()
     
@@ -1098,7 +1135,7 @@ if __name__ == "__main__":
         print(f"输入 scp: {merge_scp}")
         print(f"输出目录: {merge_output_dir}")
         print(f"Chunk size: {args.chunk_size}s")
-        print(f"Merge mode: {args.merge_mode}")
+        print(f"Merge mode: {args.merge_mode} (4=完整三遍+speaker检查)")
         
         process_merge_from_scp(str(merge_scp), str(merge_output_dir), chunk_size=args.chunk_size, merge_mode=args.merge_mode)
     else:

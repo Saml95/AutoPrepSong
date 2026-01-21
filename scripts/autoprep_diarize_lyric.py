@@ -169,7 +169,7 @@ class LyricDiarization:
                 cluster_method = 'spectral'
         
     
-
+        # import pdb; pdb.set_trace()
         # 将 diarization 结果转换为以 order 为 key 的字典
         diarized_dict = {item['order']: item for item in segments_diarized}
         # import pdb; pdb.set_trace()
