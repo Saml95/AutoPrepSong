@@ -611,13 +611,6 @@ class AutoPrepSong:
                 extra.append(seg)
                 continue
 
-            if seg['start'] < max_sec - 10: # translation case, give up the rest
-                wrong_t += vad_json[idx:]
-                break
-            elif max_sec < max_sec - 3:
-                raise NotImplementedError("又是一点没见过的小惊喜")
-
-
             if seg['start'] - max_sec >= 1.5:
                 filtered_vad_json.append({
                     "text": "",

@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 import librosa
 import json
+from load_lrc import parse_lrc_with_timestamps
 
 def energy_vad_from_start(
     audio,
@@ -76,52 +77,6 @@ def energy_vad_from_start(
 
 
 
-def parse_lrc_with_timestamps(lrc_path):
-    """
-    读取 LRC 歌词时间戳文件
-
-    Args:
-        lrc_path (str): lrc 文件路径
-        keep_metadata (bool): 是否保留 作词/作曲 等信息
-
-    Returns:
-        List[dict]: [
-            {
-                "text": str,
-                "start": float
-            },
-            ...
-        ]
-    """
-
-    pattern = re.compile(
-        r"\[(\d+):(\d+(?:\.\d+)?)\](.*)"
-    )
-
-    results = []
-
-    with open(lrc_path, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-
-            match = pattern.match(line)
-            if not match:
-                continue
-
-            minute = int(match.group(1))
-            second = float(match.group(2))
-            text = match.group(3).strip()
-
-            start_time = minute * 60 + second
-
-            results.append({
-                "text": text,
-                "start": start_time
-            })
-
-    return results
 
 
 def process(audio_path, lyric_path, vad_kwargs={}):
