@@ -1,0 +1,128 @@
+# Azure GPT API Configuration
+# This YAML file controls the API calling behavior
+
+# ========================== Mode ==========================
+# Available modes:
+#   - single_test: Single API call for testing connectivity
+#   - batch_sequential: Process multiple prompts sequentially
+#   - batch_ray: Process multiple prompts in parallel using Ray
+#   - task_sequential: Process tasks with validation loop sequentially
+#   - task_ray: Process tasks with validation loop in parallel using Ray
+mode: single_test
+
+# ========================== Debug Settings ==========================
+debug: false  # Set to true for verbose logging
+
+# ========================== API Family ==========================
+# Available API families:
+#   - gpt4o: GPT-4o models
+#   - gpt41: GPT-4.1 models
+#   - gpt5: GPT-5 models
+#   - gpt5+gpt4o: Combined GPT-5 and GPT-4o endpoints
+#   - gpt5+gpt41: Combined GPT-5 and GPT-4.1 endpoints
+#   - gpt4o+gpt41: Combined GPT-4o and GPT-4.1 endpoints
+#   - gpt5+gpt4o+gpt41: All endpoints combined
+api_family: gpt5
+
+# ========================== Prompts ==========================
+# For single_test mode:
+prompt: "Hello, how are you?"
+
+# For batch modes (batch_sequential, batch_ray):
+# prompts:
+#   - "What is the capital of France?"
+#   - "Explain quantum computing in simple terms."
+#   - "Write a haiku about programming."
+
+# ========================== System Prompt ==========================
+system_prompt: "You are a helpful assistant."
+
+# ========================== Retry Settings ==========================
+max_retries: 5  # Maximum retry attempts per request (for batch modes)
+max_api_retries: 5  # Maximum API retry attempts (for task modes)
+max_check_retries: 3  # Maximum output validation retry attempts (for task modes)
+
+# ========================== Ray Settings ==========================
+num_workers: 10  # Number of parallel Ray workers
+
+# ========================== Output Settings ==========================
+# output_path: "./results.json"  # Uncomment to save results to file
+
+# ========================== Task Processing Settings ==========================
+# For task_sequential and task_ray modes:
+
+# Data source - either inline data_list or load from file
+# data_list:
+#   - {"id": 1, "text": "Summarize this article..."}
+#   - {"id": 2, "text": "Translate this text..."}
+
+# Or load from JSON file:
+# data_file: "./input_data.json"
+
+# Custom task processor class (fully qualified name)
+# processor_cls: "my_module.MyTaskProcessor"
+
+# Arguments to pass to the task processor constructor
+# processor_kwargs:
+#   some_param: "value"
+
+# ========================== Custom API Config (optional) ==========================
+# Override the default API config for single_test mode:
+# api_config:
+#   scope: "https://cognitiveservices.azure.com/.default"
+#   endpoint: "https://readinwestus.openai.azure.com/"
+#   model: "gpt-4o-global"
+#   api_version: "2025-04-01-preview"
+
+# ========================== Structured Output (optional) ==========================
+# For structured output using Pydantic models, specify the fully qualified class name:
+# response_format_cls: "my_module.MyResponseModel"
+
+# ========================== Example Configurations ==========================
+
+# Example 1: Single test with specific endpoint
+# ---
+# mode: single_test
+# prompt: "Test message"
+# api_config:
+#   scope: "api://trapi/.default"
+#   endpoint: "https://trapi.research.microsoft.com/gcr/shared"
+#   model: "gpt-5_2025-08-07"
+#   api_version: "2025-04-01-preview"
+
+# Example 2: Batch processing with Ray
+# ---
+# mode: batch_ray
+# api_family: gpt5
+# num_workers: 20
+# max_retries: 10
+# prompts:
+#   - "Question 1"
+#   - "Question 2"
+#   - "Question 3"
+# output_path: "./batch_results.json"
+
+# Example 3: Task processing with custom processor and Ray
+# ---
+# mode: task_ray
+# api_family: gpt4o
+# num_workers: 20
+# max_api_retries: 5
+# max_check_retries: 3
+# data_file: "./input_tasks.json"
+# processor_cls: "my_tasks.SummarizationProcessor"
+# processor_kwargs:
+#   max_length: 200
+#   language: "zh"
+# output_path: "./task_results.json"
+
+# Example 4: Simple task processing with validation
+# ---
+# mode: task_sequential
+# api_family: gpt4o
+# max_api_retries: 5
+# max_check_retries: 3
+# data_list:
+#   - "Summarize the concept of machine learning in 2 sentences."
+#   - "What is the difference between AI and ML?"
+# output_path: "./simple_tasks.json"

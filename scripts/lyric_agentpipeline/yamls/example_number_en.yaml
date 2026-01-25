@@ -1,0 +1,16 @@
+# 英文数字归一化任务配置示例
+processor: number
+# scp: /datadisk/data/speech/fisher_long/data20251225/json_local.scp 
+output_dir: /datadisk/data/speech/fisher_long/data20251225/json_group_fix
+task_name: number_en
+debug: false
+api_family: gpt5
+num_workers: 128
+max_api_retries: 5
+max_check_retries: 3
+batch_duration: 600.0
+strict_check: true
+prompt_language: en
+language: en
+count: 0
+overwrite: false

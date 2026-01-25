@@ -1,0 +1,17 @@
+# 通用文本处理任务配置示例
+# 支持 processor/输入/输出/参数等统一配置
+
+processor: number   # 处理器类型: punctuation/number
+scp: /datadisk/data/speech/DC20251229/json_local_fix.scp  # 输入SCP文件
+output_dir: ./output_number_normalized  # 输出目录
+api_family: gpt5
+num_workers: 128
+max_api_retries: 5
+max_check_retries: 3
+batch_duration: 600.0
+strict_check: true
+prompt_language: en   # zh 或 en
+language: en         # 数据语言
+count: 0             # 只处理前N个文件，0为全部
+overwrite: false     # 是否覆盖原文件
+# 其他可扩展参数

@@ -1,0 +1,16 @@
+# English punctuation and capitalization processing
+# Usage: ./run_processor.sh --scp data.scp --yaml yamls/punctuation_en_gpt5.yaml
+processor: punctuation
+output_dir: /datadisk/data/speech/fisher_long/data20251225/json_group_fix_punctuated
+task_name: punctuation_en_gpt5
+debug: false
+api_family: gpt5
+num_workers: 128
+max_api_retries: 5
+max_check_retries: 3
+batch_duration: 600.0
+strict_check: true
+prompt_language: en
+language: en
+count: 0
+overwrite: false

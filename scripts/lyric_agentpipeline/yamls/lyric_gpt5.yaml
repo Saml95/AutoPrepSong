@@ -1,0 +1,14 @@
+# Lyric detection processing
+# Usage: ./run_processor.sh --scp data.scp --yaml yamls/lyric_gpt5.yaml
+processor: lyric
+# output_dir: /home/jianwei/music/luoxue_20251226/AutoPrepSongV2/20260110/lyric_gpt5
+output_dir: /home/v-chenyuyang/project/AutoPrepSongV2/local/lyric_gpt5
+task_name: lyric_gpt5
+debug: false
+api_family: gpt5
+num_workers: 128
+max_api_retries: 10 #5
+max_check_retries: 5 #3
+strict_check: true
+count: 0
+overwrite: false

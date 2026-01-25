@@ -1,0 +1,15 @@
+# 只需命令行传 --scp data.scp，其他参数全部在yaml
+processor: punctuation
+output_dir: ./output_punctuated
+task_name: punctuation_gpt5
+debug: false
+api_family: gpt5
+num_workers: 128
+max_api_retries: 5
+max_check_retries: 3
+batch_duration: 600.0
+strict_check: true
+prompt_language: zh
+language: zh
+count: 0
+overwrite: false

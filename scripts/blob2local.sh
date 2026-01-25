@@ -1,27 +1,27 @@
 blob_cmd="/root/.local/bin/addfblob"
 
 
-TARGET="exp/ray_eval_date/"
-mkdir -p ${TARGET}
+# TARGET="exp/ray_eval_date/"
+# mkdir -p ${TARGET}
 
 
-subset="20251222_vllm"
-subset=20251223
-subset=20251225_1
-# subset=20251226_1
-# subset=20251227
-# subset=20251229
-# subset=20251231
-subset=20260104
-blob_cluster=conversationhub
+# subset="20251222_vllm"
+# subset=20251223
+# subset=20251225_1
+# # subset=20251226_1
+# # subset=20251227
+# # subset=20251229
+# # subset=20251231
+# subset=20260104
+# blob_cluster=conversationhub
 # INPUT=https://conversationhub.blob.core.windows.net/unilm/jianweiyu/VibeVoice/VibeASR/v1/exp/ray_eval
 
 # INPUT=https://conversationhub.blob.core.windows.net/unilm/jianweiyu/VibeVoice/VibeASR/v1/exp/yujie_eval
 
 
 # INPUT=https://conversationhub.blob.core.windows.net/unilm/jianweiyu/VibeVoice/VibeASR/v1/exp/ray_eval_480s
-INPUT=https://conversationhub.blob.core.windows.net/unilm/jianweiyu/VibeVoice/VibeASR/v1/exp/ray_eval_date/${subset}
-TARGET=`pwd`/exp/ray_eval_date/
+# INPUT=https://conversationhub.blob.core.windows.net/unilm/jianweiyu/VibeVoice/VibeASR/v1/exp/ray_eval_date/${subset}
+# TARGET=`pwd`/exp/ray_eval_date/
 
 
 # TARGET="/mnt/jianwei/VibeASR/exp/yujie_eval/dataset_drop"
@@ -85,12 +85,12 @@ TARGET=`pwd`/exp/ray_eval_date/
 
 
 
-INPUT="https://conversationhubhot.blob.core.windows.net/unilm/yaoyaochang/speech/data/music/yan/meta/luoxue_20251226/vibevoice-asr/"
-TARGET="/home/jianwei/music/luoxue_20251226/"
+INPUT="https://conversationhubhot.blob.core.windows.net/unilm/yaoyaochang/speech/data/music/yan/meta/luoxue_batch6"
+TARGET="/data/yan/meta/luoxue_batch6"
 blob_cluster=conversationhubhot
 
 AZCOPY_BUFFER_GB=300 AZCOPY_CONCURRENCY_VALUE=AUTO AZCOPY_CONCURRENT_FILES=1024 \
-    azcopy copy \
+    azcopy sync \
     "${INPUT}$(${blob_cmd}   token -a http://135.149.113.42:5950/api -k CsOG9vleDpcc-AqQcTmJlKw4zxrR3aMsWTvTSGv1GVY= -n ${blob_cluster} -c unilm )"\
     "${TARGET}" \
     --recursive --log-level=WARNING

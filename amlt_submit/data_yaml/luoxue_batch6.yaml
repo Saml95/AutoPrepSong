@@ -1,0 +1,3 @@
+input_jsonl: /mnt/conversationhubhot/yaoyaochang/speech/data/music/yan/meta/luoxue_batch6/files_gpt_filt.jsonl
+output_base_dir: /mnt/conversationhubhot/yaoyaochang/speech/data/music/yan/meta/luoxue_batch6/AutoPrepSongV2/20260125
+split_chunk: 35000

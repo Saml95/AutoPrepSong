@@ -32,6 +32,8 @@ def load_and_category(input_scp: str, output_dir: str = None):
             continue
         if l.suffix == '.lrc':
             idx2lrc[l.stem] = str(l)
+        elif  str(l).endswith('.lyric.json'):
+            idx2lrc[l.name.replace(".lyric.json", "")] = str(l)
         elif l.suffix.lower() in AUDIO_FORMATS:
             # Store as list of (priority, path) tuples for later sorting
             priority = AUDIO_FORMATS_PRIORITY.index(l.suffix.lower()) if l.suffix.lower() in AUDIO_FORMATS_PRIORITY else len(AUDIO_FORMATS_PRIORITY)

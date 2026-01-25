@@ -23,7 +23,6 @@ from load_lrc import parse_lrc_with_timestamps
 from run_merge import merge_segments
 from process_lyrics import process_single_segment_list
 
-
 scipy.inf = np.inf
 
 
@@ -547,11 +546,21 @@ class AutoPrepSong:
 
         other_info = {}
         # Step 1: Remove MetaInfo
-        unsorted_lyric_with_starts, wrong_segments = parse_lrc_with_timestamps(lrc_path)
-        other_info["perhaps_translation"] = wrong_segments
-        # TODO Here should have a GPT check
+        if Path(lrc_path).suffix == ".lrc":
+            unsorted_lyric_with_starts, wrong_segments = parse_lrc_with_timestamps(lrc_path)
+            other_info["perhaps_translation"] = wrong_segments
+            print(f"Warning: the .lrc file has not been checked by GPT")
+        elif Path(lrc_path).name.endswith('.lyric.json'): # After GPT check
+            js_entry = json.load(open(lrc_path, 'r'))
+            unsorted_lyric_with_starts = [i for i in js_entry['segments'] if i['is_lyric']]
+            other_info["perhaps_translation"]= js_entry['error_loading']
+            other_info["GPT_not_lyric"]= [i for i in js_entry['segments'] if not i['is_lyric']]
+        else:
+            raise NotImplementedError(f"Unrecognized lyric file type: {lrc_path}")
+
         lyric_with_starts = unsorted_lyric_with_starts
-        lyric_with_starts.sort(key=lambda x:x['start'])
+        if lyric_with_starts != []:
+            lyric_with_starts.sort(key=lambda x:x['start'])
 
         # Step 1: Structural Analysis
         if self.do_songformer and self.songformer_init_args is not None:

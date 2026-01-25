@@ -14,7 +14,7 @@ def parse_lrc_with_timestamps(path):
         has_multiple, has_translate = False, False
         first_occur_time = []
         for line in f:
-            line = line.strip().replace("\xa0", " ")
+            line = line.strip().replace("\xa0", " ").replace("\ufeff", "")
 
             times = time_pattern.findall(line)
             text = time_pattern.sub("", line).strip()

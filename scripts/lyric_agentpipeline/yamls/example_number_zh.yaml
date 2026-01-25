@@ -1,0 +1,16 @@
+# 中文数字转换任务配置示例
+processor: number
+# scp: /datadisk/data/speech/DC20251229/json_local_fix.scp
+output_dir: /datadisk/data/speech/DC20251229/json_fix_number
+task_name: number_zh
+debug: false
+api_family: gpt5
+num_workers: 128
+max_api_retries: 5
+max_check_retries: 3
+batch_duration: 600.0
+strict_check: true
+prompt_language: zh
+language: zh
+count: 0
+overwrite: false
