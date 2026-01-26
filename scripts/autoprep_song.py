@@ -516,7 +516,6 @@ class AutoPrepSong:
                     store_chunk_id = None
                 self.process(wav_path=pair["audio_path"], lrc_path=pair["lyric_path"], output_dir=self.output_dir, store_chunk_id=store_chunk_id)
             except Exception as e:
-                raise e
                 print(f"[Error] Failed to process {pair['audio_path']}: {e}")
                 continue
 
