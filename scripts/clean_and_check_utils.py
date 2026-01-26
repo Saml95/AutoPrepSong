@@ -2,7 +2,7 @@ from glob import glob
 import os, sys
 from pathlib import Path
 import json
-
+import shutil
 
 def check_unfinished(root_dir, vad_dir, sep_dir, struct_dir):
     finished_ids =  [Path(i).stem for i in glob(os.path.join(root_dir, "**", "*.json"), recursive=True)]
@@ -11,9 +11,17 @@ def check_unfinished(root_dir, vad_dir, sep_dir, struct_dir):
     structed_ids = glob(os.path.join(struct_dir, "**", "*.json"), recursive=True)
     
     fa_vad = [i for i in vaded_ids if Path(i).stem not in finished_ids]
-    fa_sep = [i for i in seped_ids if Path(i).stem not in finished_ids]
+    fa_sep = [i for i in seped_ids if Path(i).name not in finished_ids]
     fa_struct = [i for i in structed_ids if Path(i).stem not in finished_ids]
     breakpoint()
+    for i in fa_vad:
+        os.remove(i)
+    breakpoint()
+    for i in fa_sep:
+        shutil.rmtree(i)
+    breakpoint()
+    for i in fa_struct:
+        os.remove(i)
 
 
 def check_missed(output_scp, input_jsonl):
