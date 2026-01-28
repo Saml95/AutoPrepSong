@@ -1,0 +1,3 @@
+input_jsonl: /mnt/conversationhubhot/yaoyaochang/speech/data/netease/files_gpt_filt.jsonl
+output_base_dir: /mnt/conversationhubhot/yaoyaochang/speech/data/netease/meta/AutoPrepSongV2/20260125
+split_chunk: 40000

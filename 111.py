@@ -94,42 +94,25 @@ from scripts.load_lrc import parse_lrc_with_timestamps
 
 
 
-print(Path("/data/yan/meta/luoxue_batch6/lyric_after_gpt5/luoxue_batch6/HITA、音频怪物 - 剑胆琴心(长歌门) (剧情版).lyric.json").stem)
-exit()
+# print(Path("/data/yan/meta/luoxue_batch6/lyric_after_gpt5/luoxue_batch6/HITA、音频怪物 - 剑胆琴心(长歌门) (剧情版).lyric.json").stem)
+# exit()
 
 
-
-fail_ls = [
-"/data/yan/meta/luoxue_batch6/lyric_after_gpt5/luoxue_batch6/HITA、音频怪物 - 剑胆琴心(长歌门) (剧情版).lyric.json",                                                                            
-"/data/yan/meta/luoxue_batch6/lyric_after_gpt5/luoxue_batch6/R.I.O. - R.I.O. Megamix (Continuous DJ Mix).lyric.json",                                                                           
-"/data/yan/meta/luoxue_batch6/lyric_after_gpt5/luoxue_batch6/Vicetone - End Of The Year Mix 2016.lyric.json",                                                                                   
-"/data/yan/meta/luoxue_batch6/lyric_after_gpt5/luoxue_batch6/deadmau5 - 4x4=12 (Continuous Mix).lyric.json",                                                                                    
-"/data/yan/meta/luoxue_batch6/lyric_after_gpt5/luoxue_batch6/严凤英、王少舫 - 夫妻观灯 (黄梅戏版).lyric.json",                                                                                  
-"/data/yan/meta/luoxue_batch6/lyric_after_gpt5/luoxue_batch6/主播凯紫 - 暗恋.lyric.json",                                                                                                       
-"/data/yan/meta/luoxue_batch6/lyric_after_gpt5/luoxue_batch6/古巨基 - 劲歌金曲 (Live).lyric.json",                                                                                              
-"/data/yan/meta/luoxue_batch6/lyric_after_gpt5/luoxue_batch6/古巨基 - 劲歌金曲.lyric.json",                                                                                                     
-"/data/yan/meta/luoxue_batch6/lyric_after_gpt5/luoxue_batch6/将离 - 【剧情版】如愿长生.lyric.json",                                                                                             
-"/data/yan/meta/luoxue_batch6/lyric_after_gpt5/luoxue_batch6/少徒 - Avicii-UMF2016 REMAKE（少徒 remix）.lyric.json",                                                                            
-"/data/yan/meta/luoxue_batch6/lyric_after_gpt5/luoxue_batch6/张新尚、杨荣荣 - 张连卖布 (秦腔版).lyric.json",                                                                                    
-"/data/yan/meta/luoxue_batch6/lyric_after_gpt5/luoxue_batch6/群星 - 伤感2011(Dj径舟首张串烧大碟).lyric.json",                                                                                   
-"/data/yan/meta/luoxue_batch6/lyric_after_gpt5/luoxue_batch6/群星 - 孤城闭.lyric.json",                                                                                                         
-"/data/yan/meta/luoxue_batch6/lyric_after_gpt5/luoxue_batch6/音频怪物、五色石南叶 - 圣焰暝影(陆危楼&阿萨辛).lyric.json",                                                                        
-"/data/yan/meta/luoxue_batch6/lyric_after_gpt5/luoxue_batch6/Queen - Queen at Live Aid 1985.lyric.json",                                                                                        
-"/data/yan/meta/luoxue_batch6/lyric_after_gpt5/luoxue_batch6/王贰浪 - 爱你.lyric.json",                                                                                                         
-"/data/yan/meta/luoxue_batch6/lyric_after_gpt5/luoxue_batch6/程砚秋 - 【京剧】窦娥冤.lyric.json",
-] 
-
-lines = open("/data/yan/meta/luoxue_batch6/lyric_after_gpt5/origin_lyrics.scp").readlines()
-first_fail = open("/data/yan/meta/luoxue_batch6/lyric_after_gpt5/origin_lyrics_fails.scp", 'w')
-for l in tqdm.tqdm(lines):
-    out_path = l.strip().replace("/home/v-chenyuyang/luoxue_batch6", "/data/yan/meta/luoxue_batch6/lyric_after_gpt5/luoxue_batch6").replace(".lrc", ".lyric.json")
-    if Path(out_path).exists() and out_path not in fail_ls:
-        continue
-
-    first_fail.write(l)
 
 
 # import os
 # for l in fail_ls:
 #     os.remove(l)
 #     print(l)
+
+vld_jsl = open("/mnt/conversationhubhot/yaoyaochang/speech/data/netease/wyy_valid.jsonl").readlines()
+vld_jsl = [json.loads(i.strip()) for i in vld_jsl]
+id2jsl = {Path(i['audio_path']).stem: i for i in vld_jsl}
+
+output_js = open("/mnt/conversationhubhot/yaoyaochang/speech/data/netease/files_gpt_filt.jsonl", 'w')
+for id in id2jsl:
+    new_lrc_path = f"/mnt/conversationhubhot/yaoyaochang/speech/data/netease/lyric_after_gpt5/lyrics/{id}.lyric.json"
+    if Path(new_lrc_path).exists():
+        id2jsl[id]['lyric_path'] = new_lrc_path
+        output_js.write(json.dumps(id2jsl[id]['lyric_path'], ensure_ascii=False)+'\n')
+

@@ -12,25 +12,25 @@
 # scp_path="/home/jianwei/music/luoxue/json_local.scp"
 # scp_path="/home/jianwei/music/luoxue/2.scp"  
 yaml_path="yamls/lyric_gpt5.yaml"
-scp_path="/data/yan/meta/luoxue_batch6/lyric_after_gpt5/origin_lyrics.scp"
 # /data/yan/meta/luoxue_batch6/ -> /mnt/conversationhubhot/yaoyaochang/speech/data/music/yan/meta/luoxue_batch6
-output_dir="/data/yan/meta/luoxue_batch6/lyric_after_gpt5"
-mkdir -p /data/yan/meta/luoxue_batch6/lyric_after_gpt5/
+output_dir="/mnt/conversationhubhot/yaoyaochang/speech/data/netease/lyric_after_gpt5"
+lrc_dir=/mnt/conversationhubhot/yaoyaochang/speech/data/netease/lyrics
+scp_path="/mnt/conversationhubhot/yaoyaochang/speech/data/netease/origin_lyrics.scp"
 
-find /home/v-chenyuyang/luoxue_batch6/ -name "*.lrc" > $scp_path
+# mkdir -p $output_dir
 
+# find $lrc_dir -name "*.lrc" > $scp_path
 
+# echo "=============================================="
+# echo "SCP: $scp_path"
+# echo "len(SCP): $(wc -l < "$scp_path")"
+# echo "YAML: $yaml_path"
+# echo "OUTPUT: $output_dir"
+# echo "=============================================="
+# sleep 5
 
-echo "=============================================="
-echo "SCP: $scp_path"
-echo "len(SCP): $(wc -l < "$scp_path")"
-echo "YAML: $yaml_path"
-echo "OUTPUT: $output_dir"
-echo "=============================================="
-sleep 5
+# python run_processor.py --scp $scp_path --yaml "$yaml_path" --output_dir $output_dir
 
-python run_processor.py --scp $scp_path --yaml "$yaml_path" --output_dir $output_dir
-
-# fail_scp="${scp_path%.*}_first_fail.${scp_path##*.}"
-# python check_fail.py $scp_path $output_dir $fail_scp
-# python run_processor.py --scp $fail_scp --yaml "$yaml_path" --output_dir $output_dir
+fail_scp="${scp_path%.*}_first_fail.${scp_path##*.}"
+python check_fail.py $scp_path $output_dir $fail_scp
+python run_processor.py --scp $fail_scp --yaml "$yaml_path" --output_dir $output_dir
