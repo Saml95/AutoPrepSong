@@ -114,5 +114,5 @@ for id in id2jsl:
     new_lrc_path = f"/mnt/conversationhubhot/yaoyaochang/speech/data/netease/lyric_after_gpt5/lyrics/{id}.lyric.json"
     if Path(new_lrc_path).exists():
         id2jsl[id]['lyric_path'] = new_lrc_path
-        output_js.write(json.dumps(id2jsl[id]['lyric_path'], ensure_ascii=False)+'\n')
+        output_js.write(json.dumps(id2jsl[id], ensure_ascii=False)+'\n')
 

@@ -56,13 +56,13 @@ search:
         OMP_NUM_THREADS: 1
         MKL_SERVICE_FORCE_INTEL: 1
   type: grid
-  max_trials: 10
+  max_trials: 256
   params:
     - name: start_idx
       spec: discrete
-      values: range(0, 138600, 128) 
+      values: range(0, 129041, 505) 
     - name: chunk_size
       spec: discrete
       values: [
-        128
+        505
       ]
