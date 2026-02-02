@@ -4,13 +4,18 @@ import zipfile
 import json
 from glob import glob
 import re
-from torchcodec.decoders import AudioDecoder
+# from torchcodec.decoders import AudioDecoder
 from tqdm import tqdm
 import tarfile
 
-ROOT_DIR = "/data/jianwei/music/a50w/m-a-p_a50w/audio/"
-JSON_OUT_DIR = "/data/jianwei/music/a50w/jsons"
-LYRICS_DIR = "/data/jianwei/music/a50w/lyrics/"
+BASE_DIR = "/mntext/jianwei/data/a50w_add_new/m-a-p_a50w/"
+
+ROOT_DIR = os.path.join(BASE_DIR, "audio")
+JSON_OUT_DIR = os.path.join(BASE_DIR, "jsons")
+LYRICS_DIR = os.path.join(BASE_DIR, "lyrics")
+# ROOT_DIR = "/data/jianwei/music/a50w/m-a-p_a50w/audio/"
+# JSON_OUT_DIR = "/data/jianwei/music/a50w/jsons"
+# LYRICS_DIR = "/data/jianwei/music/a50w/lyrics/"
 
 import zipfile
 from pathlib import Path
@@ -157,7 +162,9 @@ def process():
 
         new_data = {
             "idx": idx,
-            "audio_path": audio_path.replace("/data/jianwei/music/a50w", "/mnt/conversationhubhot/yaoyaochang/speech/data/music/a50w"),
+            # "audio_path": audio_path.replace("/data/jianwei/music/a50w", "/mnt/conversationhubhot/yaoyaochang/speech/data/music/a50w"),
+            # "audio_path": audio_path.replace("/mntext/jianwei/data/a50w_add_new", "/mnt/conversationhubhot/yaoyaochang/speech/data/music/a50w_add_new"),
+            "audio_path": audio_path.replace("/mntext/jianwei/data/a50w_add_new", "/mnt/conversationhubhot/yaoyaochang/speech/data/music/a50w"),
             "audio_length": data["audio_length_in_sec"],
             "segments": convert_segmented_lyrics(segmented_lyrics),
             "info": str({
